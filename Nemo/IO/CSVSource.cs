@@ -1,6 +1,4 @@
-﻿using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Windows.Markup;
+﻿using System.Text;
 namespace Nemo.IO;
 
 /// <summary>
@@ -10,7 +8,8 @@ namespace Nemo.IO;
 /// It must be thread safe. So each thread will have its own stream
 /// </summary>
 public class CSVSource
-{   public string FilePath { get; init; }
+{
+    public string FilePath { get; init; }
     internal Encoding Encoding { get; init; } = new UTF8Encoding(false);
     internal string LineTerminator { get; set; } = Environment.NewLine;
     public CSVSource(string filePath)
@@ -54,6 +53,6 @@ public class CSVSource
                 throw new InvalidOperationException("Line separator could not be detected.");
             }
         }
-    }    
+    }
 }
-        
+

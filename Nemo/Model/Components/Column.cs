@@ -16,7 +16,7 @@ public class Column : IModelComponent
     {
         Name = outputName;
         T_min = t_min;
-        Values = new ColumnValue[t_max-t_min+1];
+        Values = new ColumnValue[t_max - t_min + 1];
         Aggregation = aggregation;
         EvaluationFunction = evalFunction;
     }
@@ -30,7 +30,7 @@ public class Column : IModelComponent
             case ColumnValueState.Uncalculated:
                 {
                     double value = EvaluationFunction(t);
-                    if(value == ModelBase.ZeroNoAverage)
+                    if (value == ModelBase.ZeroNoAverage)
                     {
                         Values[offset].Value = 0;
                         Values[offset].State = ColumnValueState.ZeroNoAverage;
@@ -60,7 +60,7 @@ public class Column : IModelComponent
     }
     public bool IsCalculatedAt(int t)
     {
-        return Values[t-T_min].State > 0;
+        return Values[t - T_min].State > 0;
     }
     internal double View(int t)
     {
@@ -77,7 +77,7 @@ public enum AggregationMethod
     Average
 }
 [DebuggerDisplay("{State}    {Value}")]
-internal struct ColumnValue 
+internal struct ColumnValue
 {
     internal ColumnValueState State { get; set; }
     internal double Value { get; set; }

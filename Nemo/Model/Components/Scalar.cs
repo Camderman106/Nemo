@@ -53,7 +53,7 @@ public class Scalar<T> : IModelComponent where T : notnull
             }
             else
             {
-                _value =  GetDefaultValue();
+                _value = GetDefaultValue();
                 _calculated = true;
                 return _value;
             }

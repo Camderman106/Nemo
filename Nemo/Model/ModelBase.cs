@@ -1,7 +1,5 @@
 ﻿using Nemo.Model.Components;
-using nietras.SeparatedValues;
 using System.Reflection;
-using System.Transactions;
 
 namespace Nemo.Model;
 public abstract class ModelBase
@@ -42,11 +40,11 @@ public abstract class ModelBase
             AggregateOutputBuffer = new AggregateOutputBuffer(group);
         }
     }
-    
-    protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<ReadOnlySpan<char>, T> converter) where T: notnull
+
+    protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<ReadOnlySpan<char>, T> converter) where T : notnull
     {
         DataScalarMap.Add(new KeyValuePair<string, Action<ReadOnlySpan<char>>>(dataField, (dataValue) => scalar.SetValue(converter(dataValue))));
-    } 
+    }
     internal void Initialise()
     {
         for (int i = 0; i < ColumnFields.Count; i++)
@@ -75,19 +73,19 @@ public abstract class ModelBase
                 }
             }
         }
-    } 
+    }
     public virtual void Target()
     {
-        foreach(var columnField in ColumnFields)
+        foreach (var columnField in ColumnFields)
         {
             Column column = (Column)columnField.GetValue(this)!;
             for (var i = Projection.T_Start; i <= Projection.T_End; i++)
             {
                 column.At(i);
             }
-        }        
+        }
     }
-    
+
     internal void OutputToBuffer()
     {
         if (AggregateOutputBuffer is not null)
@@ -99,7 +97,7 @@ public abstract class ModelBase
                 AggregateColumnBuffer? columnBuffer = AggregateOutputBuffer.ColumnBuffers[i];
                 if (columnBuffer is not null)
                 {
-                    var span = column.TrimForExport(Projection.T_Start, Projection.T_End-Projection.T_Start+1);
+                    var span = column.TrimForExport(Projection.T_Start, Projection.T_End - Projection.T_Start + 1);
                     for (int t = Projection.T_Start; t <= Projection.T_End; t++)
                     {
                         if (span[t].State == ColumnValueState.Calculated)

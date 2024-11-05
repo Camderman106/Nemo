@@ -12,7 +12,7 @@ public class Engine<TModel> where TModel : ModelBase
     private int MaxThreads = 8;
     private string? GroupBy = null;
     Func<Projection, OutputSet, TModel> ModelFactory;
-    internal ConcurrentBag<AggregateOutputBuffer> AggregateBuffers { get; private set; } 
+    internal ConcurrentBag<AggregateOutputBuffer> AggregateBuffers { get; private set; }
 
     public Engine(Func<Projection, OutputSet, TModel> modelFactory)
     {
@@ -22,11 +22,12 @@ public class Engine<TModel> where TModel : ModelBase
     public void Execute(Job job)
     {
         CSVSource data = job.Records;
-        var records = Table.From(data).IndexByRow().AsDataRecords();
+        using var reader = new StreamReader(new FileStream(data.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+        using var sep = Sep.Auto.Reader().From(reader);
         var instance = ModelFactory(job.Projection, job.OutputSet);
-        foreach (var record in records)
+        foreach (var rec in sep)
         {
-            InjectScalarData(instance, record);
+            InjectScalarData(instance, rec);
         }
     }
 
@@ -37,7 +38,7 @@ public class Engine<TModel> where TModel : ModelBase
     /// </summary>
     /// <param name="instance"></param>
     /// <param name="record"></param>
-    private static void InjectScalarData(TModel instance, SepReader.Row record) 
+    private static void InjectScalarData(TModel instance, SepReader.Row record)
     {
         foreach (var dataField in instance.DataScalarMap)
         {
