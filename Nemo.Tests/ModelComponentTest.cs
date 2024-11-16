@@ -137,11 +137,40 @@ namespace Nemo.Tests
             Engine<SimpleExampleModel> engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
             engine.Execute(job);
 
+            
+
+        }
+        [TestMethod]
+        public void Test2EndToEnd()
+        {
+            CSVSource yieldcurve = new CSVSource("2023Q3YieldCurve.csv");
+            CSVSource data = new CSVSource("FakeDataWithGroup.csv");
+            var sources = new Dictionary<string, CSVSource>();
+            sources["YieldCurve"] = yieldcurve;
+            Projection projection = new Projection(0, 0, 1200, 1200, sources);
+            OutputSet outputSet = new OutputSet();
+           
+
             Job job2 = new Job("test2", Directory.GetCurrentDirectory(), data, projection, outputSet);
-            engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
+            var engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
             engine.GroupRecordsBy("GROUP");
             engine.Execute(job2);
+        }
+        [TestMethod]
+        public void Test3EndToEnd()
+        {
+            CSVSource yieldcurve = new CSVSource("2023Q3YieldCurve.csv");
+            CSVSource data = new CSVSource("FakeDataWithGroup.csv");
+            var sources = new Dictionary<string, CSVSource>();
+            sources["YieldCurve"] = yieldcurve;
+            Projection projection = new Projection(0, 0, 1200, 1200, sources);
+            OutputSet outputSet = new OutputSet();
 
+
+            Job job3 = new Job("test3", Directory.GetCurrentDirectory(), data, projection, outputSet);
+            var engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
+            engine.GroupRecordsBy("GROUP");
+            engine.Execute(job3);
         }
     }
     public sealed class SimpleExampleModel : ModelBase

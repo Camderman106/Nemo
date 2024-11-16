@@ -4,6 +4,7 @@ using Nemo.Model.Components;
 using nietras.SeparatedValues;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Nemo;
 
@@ -13,7 +14,7 @@ public class Engine<TModel> where TModel : ModelBase
     private bool MultiThreading = false;
     private int MaxThreads = 8;
     private string? GroupBy = null;
-    Func<Projection, OutputSet, TModel> ModelFactory;
+    private Func<Projection, OutputSet, TModel> ModelFactory;
     internal ConcurrentBag<AggregateOutputBuffer> AggregateBuffers { get; private set; }
 
     public Engine(Func<Projection, OutputSet, TModel> modelFactory)
@@ -26,34 +27,86 @@ public class Engine<TModel> where TModel : ModelBase
         Stopwatch JobTimer = Stopwatch.StartNew();
         Directory.CreateDirectory(job.JobDirectory);
         var records = Table.From(job.Records).AsRecords();
-
-        if (GroupBy is null)
+        ParallelOptions options = new ParallelOptions() { MaxDegreeOfParallelism = MaxThreads };
+        //Setting switch
+        switch (GroupBy is not null, ChunkSize is not null, MultiThreading)
         {
-            var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
-            ProcessBatch(instance, records);
-        }
-        else
-        {   
-            IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy]).Select(x => x.ToList());
-            if (ChunkSize is not null) { groups = groups.SelectMany(x => x.Chunk(ChunkSize.Value)).ToList(); }
-            if (MultiThreading)
-            {
-                ParallelOptions options = new ParallelOptions() { MaxDegreeOfParallelism = MaxThreads };
-                Parallel.ForEach(groups, options , (group) => 
+            case (false, false, false):
                 {
                     var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
-                    ProcessBatch(instance, group);
-                });
-            }
-            else
-            {
-                foreach (var group in groups)
-                {
-                    var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
-                    ProcessBatch(instance, group);
+                    ProcessBatch(instance, records);
+                    break;
                 }
-            }
+            case (false, false, true):
+                {
+                    var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                    ProcessBatch(instance, records);
+                    break;
+                }
+            case (false, true, false):
+                {
+                    IEnumerable<IEnumerable<TableRecord>> groups = records.Chunk(ChunkSize!.Value).ToList();
+                    foreach (var group in groups)
+                    {
+                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        ProcessBatch(instance, group);
+                    }
+                    break;
+                }
+            case (false, true, true):
+                {
+                    IEnumerable<IEnumerable<TableRecord>> groups = records.Chunk(ChunkSize!.Value).ToList();
+                    Parallel.ForEach(groups, options, (group) =>
+                    {
+                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        ProcessBatch(instance, group);
+                    });
+                    break;
+                }
+            case (true, false, false):
+                {
+                    IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy!]).Select(x => x.ToList());
+                    foreach (var group in groups)
+                    {
+                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        ProcessBatch(instance, group);
+                    }
+                    break;
+                }
+            case (true, false, true):
+                {
+                    IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy!]).Select(x => x.ToList());
+                    Parallel.ForEach(groups, options, (group) =>
+                    {
+                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        ProcessBatch(instance, group);
+                    });
+                    break;
+                }
+            case (true, true, false):
+                {
+                    IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy!]).Select(x => x.ToList());
+                    groups = groups.SelectMany(x => x.Chunk(ChunkSize!.Value)).ToList();
+                    foreach (var group in groups)
+                    {
+                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        ProcessBatch(instance, group);
+                    }
+                    break;
+                }
+            case (true, true, true):
+                {
+                    IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy!]).Select(x => x.ToList());
+                    groups = groups.SelectMany(x => x.Chunk(ChunkSize!.Value)).ToList();
+                    Parallel.ForEach(groups, options, (group) =>
+                    {
+                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        ProcessBatch(instance, group);
+                    });
+                    break;
+                }
         }
+        
         //merge buffers again
         ConcurrentBag<AggregateOutputBuffer> bag = new();
         var buffergroups = AggregateBuffers.GroupBy(x => x.GroupByKey);
