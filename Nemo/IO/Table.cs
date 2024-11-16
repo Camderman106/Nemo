@@ -1,9 +1,7 @@
 ﻿using nietras.SeparatedValues;
 using System.Collections;
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Text;
 namespace Nemo.IO;
 
@@ -17,7 +15,7 @@ public class Table
     {
         return new Table() { CSVSource = cSVSource };
     }
-    
+
     public class ColumnIndexed : IDisposable
     {
         internal CSVSource CSVSource { get; private set; }
@@ -45,7 +43,7 @@ public class Table
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4})).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4 })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
@@ -341,12 +339,12 @@ public record TableRecord : TableRow, IReadOnlyDictionary<string, string>
 
     public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
     {
-        return HeaderIndex.Keys.Select(x => new KeyValuePair<string,string>(x, this[x])).GetEnumerator();
+        return HeaderIndex.Keys.Select(x => new KeyValuePair<string, string>(x, this[x])).GetEnumerator();
     }
 
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value)
     {
-        if( HeaderIndex.TryGetValue(key, out int index))
+        if (HeaderIndex.TryGetValue(key, out int index))
         {
             value = Values[index];
             return true;

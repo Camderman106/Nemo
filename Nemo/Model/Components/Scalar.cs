@@ -2,14 +2,23 @@
 using System.Runtime.CompilerServices;
 
 namespace Nemo.Model.Components;
+
+internal interface IScalarOutputToString
+{
+    bool IsOutput { get; }
+    string OutputName { get; }
+    string OutputToString();
+}
 [DebuggerDisplay("{Name}: {typeof(T)} {_value}")]
 
-public class Scalar<T> : IModelComponent where T : notnull
+public class Scalar<T> : ScalarBase, IScalarOutputToString, IModelComponent where T : notnull
 {
-    public string OutputName { get; init; }
     private bool _calculated;
     private T _value;
     private Func<T>? _evaluationFunction;
+
+    bool IScalarOutputToString.IsOutput => base.IsOutput;
+
 
     public Scalar(string outputName, Func<T> evaluationFunction)
     {
@@ -76,7 +85,11 @@ public class Scalar<T> : IModelComponent where T : notnull
 
     public string Name => OutputName;
 
-    public override string ToString()
+    public T Peek()
+    {
+        return _value;
+    }
+    public string OutputToString()
     {
         Debug.Assert(_value is not null);
         return _value.ToString() ?? string.Empty;

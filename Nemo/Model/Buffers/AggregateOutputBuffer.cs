@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace Nemo.Model;
-
+namespace Nemo.Model.Buffers;
 internal class AggregateOutputBuffer
 {
     internal Guid BufferId = Guid.NewGuid();
@@ -20,7 +19,7 @@ internal class AggregateOutputBuffer
     internal static AggregateOutputBuffer CreateEmptyDuplicate(AggregateOutputBuffer template)
     {
         AggregateOutputBuffer result = new AggregateOutputBuffer(template.ModelClass, template.Group);
-        foreach(AggregateColumnBuffer buffer in template.ColumnBuffers)
+        foreach (AggregateColumnBuffer? buffer in template.ColumnBuffers)
         {
             result.ColumnBuffers.Add(buffer?.CreateEmptyDuplicate());
         }
@@ -40,40 +39,40 @@ internal class AggregateOutputBuffer
             {
                 AggregateColumnBuffer? a = result.ColumnBuffers[i];
                 AggregateColumnBuffer? b = other.ColumnBuffers[i];
-                Debug.Assert((a is not null && b is not null) || (a is null && b is null));
-                if (a is null || b is  null) continue;
+                Debug.Assert(a is not null && b is not null || a is null && b is null);
+                if (a is null || b is null) continue;
                 for (int j = 0; j < a.Values.Length; j++)
                 {
                     a.Values[j].Sum += b.Values[j].Sum;
                     a.Values[j].Count += b.Values[j].Count;
                 }
             }
-        }        
+        }
         return result;
     }
     internal static void Export(IEnumerable<AggregateOutputBuffer> buffers, Job job)
     {
         var files = buffers.GroupBy(x => x.ModelClass);
-        string headers = null;
         foreach (IGrouping<string, AggregateOutputBuffer> file in files)
         {
             string path = Path.Combine(job.JobDirectory, job.Name + "-" + file.Key + ".csv");
+
+            var first = file.FirstOrDefault();
+            if (first is null) { continue; }
             using var streamwriter = new StreamWriter(path);
-            if (headers is null) 
-            {
-                var first = file.ToList()[0];
-                headers = $"modelclass,group,time,{string.Join(',', first.ColumnBuffers.Where(x => x is not null).Select(x => x!.ColumnName))}";
-                streamwriter.WriteLine(headers);
-            }
-            foreach (var buffer in buffers) 
+
+            var headers = $"modelclass,group,time,{string.Join(',', first.ColumnBuffers.Select(x => x!.ColumnName))}";
+            streamwriter.WriteLine(headers);
+
+            foreach (var buffer in buffers)
             {
                 for (int t = job.Projection.T_Start; t < job.Projection.T_End; t++)
-                {                 
+                {
                     int offset = t - job.Projection.T_Min;
-                    string line = $"{buffer.ModelClass},{buffer.Group},{t},{string.Join(',', buffer.ColumnBuffers.Where(x => x is not null).Select(x => x.OutputValue(offset)))}";
+                    string line = $"{buffer.ModelClass},{buffer.Group},{t},{string.Join(',', buffer.ColumnBuffers.Select(x => x.OutputValue(offset)))}";
                     streamwriter.WriteLine(line);
                 }
-            }            
+            }
         }
     }
 }

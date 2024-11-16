@@ -1,10 +1,8 @@
 ﻿using Nemo.IO;
 using Nemo.Model;
-using Nemo.Model.Components;
-using nietras.SeparatedValues;
+using Nemo.Model.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace Nemo;
 
@@ -16,11 +14,12 @@ public class Engine<TModel> where TModel : ModelBase
     private string? GroupBy = null;
     private Func<Projection, OutputSet, TModel> ModelFactory;
     internal ConcurrentBag<AggregateOutputBuffer> AggregateBuffers { get; private set; }
-
+    internal ConcurrentBag<IndividualOutputBuffer> IndividualBuffers { get; private set; }
     public Engine(Func<Projection, OutputSet, TModel> modelFactory)
     {
         ModelFactory = modelFactory;
         AggregateBuffers = new ConcurrentBag<AggregateOutputBuffer>();
+        IndividualBuffers = new ConcurrentBag<IndividualOutputBuffer>();
     }
     public void Execute(Job job)
     {
@@ -106,19 +105,23 @@ public class Engine<TModel> where TModel : ModelBase
                     break;
                 }
         }
-        
-        //merge buffers again
-        ConcurrentBag<AggregateOutputBuffer> bag = new();
-        var buffergroups = AggregateBuffers.GroupBy(x => x.GroupByKey);
-        foreach (var buffergroup in buffergroups)
+
+        //merge aggregate buffers again
         {
-            bag.Add(AggregateOutputBuffer.MergeBuffers(buffergroup));
+            ConcurrentBag<AggregateOutputBuffer> bag = new();
+            var buffergroups = AggregateBuffers.GroupBy(x => x.GroupByKey);
+            foreach (var buffergroup in buffergroups)
+            {
+                bag.Add(AggregateOutputBuffer.MergeBuffers(buffergroup));
+            }
+            AggregateBuffers = bag;
         }
-        AggregateBuffers = bag;
-        AggregateOutputBuffer.Export(bag, job);
-        Console.WriteLine($"Job: {job.Name} completed in {(float)JobTimer.ElapsedMilliseconds/1000}s");
+
+        if (job.OutputSet.AggregatedOutput) AggregateOutputBuffer.Export(AggregateBuffers, job);
+        if (job.OutputSet.IndividualOutput) IndividualOutputBuffer.Export(IndividualBuffers, job);
+        Console.WriteLine($"Job: {job.Name} completed in {(float)JobTimer.ElapsedMilliseconds / 1000}s");
     }
-    
+
     public void ProcessBatch(TModel instance, IEnumerable<TableRecord> records)
     {
         string group = "";
@@ -141,7 +144,7 @@ public class Engine<TModel> where TModel : ModelBase
         {
             try
             {
-                instance.RecordIndex++;
+                instance.RecordIndex = record.Index;
                 instance.InjectModelData(record);
                 instance.OnNextRecord();
                 instance.Target();
@@ -161,13 +164,15 @@ public class Engine<TModel> where TModel : ModelBase
                     Odometer.Reset();
                 }
                 instance.Reset();
-            }            
+            }
         }
-        if(instance.AggregateOutputBuffer is not null) 
+        if (instance.AggregateOutputBuffer is not null)
             AggregateBuffers.Add(instance.AggregateOutputBuffer);
-        Console.WriteLine($"Batch complete: Group '{group}' with {BatchCount} records took {(float)BatchTimer.ElapsedMilliseconds/1000}s");
+        if (instance.IndividualOutputBuffer is not null)
+            IndividualBuffers.Add(instance.IndividualOutputBuffer);
+        Console.WriteLine($"Batch complete: Group '{group}' with {BatchCount} records took {(float)BatchTimer.ElapsedMilliseconds / 1000}s");
     }
-    
+
 
     public Engine<TModel> UseMultiThreading(bool multiThreading)
     {

@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace Nemo.Model;
+namespace Nemo.Model.Buffers;
 
 [DebuggerDisplay("Sum({Sum})  Count({Count})")]
 internal struct AggregateColumnBufferValue

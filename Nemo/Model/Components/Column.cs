@@ -11,7 +11,7 @@ public class Column : IModelComponent
     private Func<int, double> EvaluationFunction;
     private readonly int T_min;
     public readonly AggregationMethod Aggregation;
-    public bool isOutput { get; internal set; } = false;
+    internal bool IsOutput { get; set; } = false;
     public Column(string outputName, int t_min, int t_max, AggregationMethod aggregation, Func<int, double> evalFunction)
     {
         Name = outputName;
@@ -84,7 +84,7 @@ internal struct ColumnValue
 }
 internal enum ColumnValueState : byte
 {
-    Uncalculated  = 0b00000000,
+    Uncalculated = 0b00000000,
     ZeroNoAverage = 0b00000001,
-    Calculated    = 0b00000010
+    Calculated = 0b00000010
 }

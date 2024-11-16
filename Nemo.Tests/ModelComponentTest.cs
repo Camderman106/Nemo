@@ -240,7 +240,7 @@ namespace Nemo.Tests
                 double pxFuture = survivalProbability(Age.At(t + 1));
 
                 return Math.Max(0.0, pxFuture / pxCurrent);
-            });
+            });            
 
             CummulativeTPX = new Column("CummulativeTPX", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
             {

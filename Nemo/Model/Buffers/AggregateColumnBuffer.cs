@@ -1,6 +1,6 @@
 ﻿using Nemo.Model.Components;
 
-namespace Nemo.Model;
+namespace Nemo.Model.Buffers;
 
 internal class AggregateColumnBuffer
 {
@@ -15,11 +15,13 @@ internal class AggregateColumnBuffer
     }
     internal AggregateColumnBuffer CreateEmptyDuplicate()
     {
-        return new AggregateColumnBuffer(ColumnName, 0 , Values.Length - 1, AggregationMethod);        
+        return new AggregateColumnBuffer(ColumnName, 0, Values.Length - 1, AggregationMethod);
     }
     internal double OutputValue(int offset)
     {
-        if(AggregationMethod == AggregationMethod.Sum) return Values[offset].Sum;
+        if (AggregationMethod == AggregationMethod.Sum) return Values[offset].Sum;
         return Values[offset].Sum / Values[offset].Count;
     }
 }
+
+

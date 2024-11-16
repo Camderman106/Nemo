@@ -1,4 +1,5 @@
 ﻿using Nemo.IO;
+using Nemo.Model.Buffers;
 using Nemo.Model.Components;
 using System.Reflection;
 
@@ -10,13 +11,14 @@ public abstract class ModelBase
     internal int RecordIndex = 0;
     internal bool Initialised = false;
     public static readonly double ZeroNoAverage = -1.23456789e300;
-    public List<ModelBase> ChildModels { get; set; } = new();    
+    public List<ModelBase> ChildModels { get; set; } = new();
     private OutputSet OutputSet { get; init; }
     private Projection Projection { get; init; }
     private List<FieldInfo> ColumnFields { get; init; }
     private List<FieldInfo> ScalarFields { get; init; }
     private List<FieldInfo> ModelComponents { get; init; }
     internal AggregateOutputBuffer? AggregateOutputBuffer { get; set; }
+    internal IndividualOutputBuffer? IndividualOutputBuffer { get; set; }
     internal List<KeyValuePair<string, Action<string>>> DataScalarMap = new();
     public ModelBase(Projection projection, OutputSet outputSet)
     {
@@ -37,7 +39,7 @@ public abstract class ModelBase
             .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
             .Where(f => typeof(IModelComponent).IsAssignableFrom(f.FieldType)).ToList();
 
-        
+
     }
     protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<string, T> converter) where T : notnull
     {
@@ -65,10 +67,7 @@ public abstract class ModelBase
 
     internal void InitialiseBuffer(string group)
     {
-        if (OutputSet.AggregatedOutput) //Set up aggregate buffer
-        {
-            AggregateOutputBuffer = new AggregateOutputBuffer(this.GetType().Name, group);
-        }
+
         for (int i = 0; i < ColumnFields.Count; i++)
         {
             FieldInfo field = ColumnFields[i];
@@ -76,17 +75,17 @@ public abstract class ModelBase
             column.ColumnIndex = i;
             if (OutputSet.Columns.Contains("Columns.All") || OutputSet.Columns.Contains(column.Name))
             {
-                column.isOutput = true;
+                column.IsOutput = true;
             }
         }
-        if (AggregateOutputBuffer is not null) //Set up aggregate buffer
+        if (OutputSet.AggregatedOutput) //Set up aggregate buffer
         {
-            AggregateOutputBuffer.ColumnBuffers.Clear();
+            AggregateOutputBuffer = new AggregateOutputBuffer(this.GetType().Name, group);
             for (int i = 0; i < ColumnFields.Count; i++)
             {
                 FieldInfo field = ColumnFields[i];
                 Column column = (Column)field.GetValue(this)!;
-                if (column.isOutput)
+                if (column.IsOutput)
                 {
                     AggregateOutputBuffer.ColumnBuffers.Add(new AggregateColumnBuffer(column.Name, Projection.T_Start, Projection.T_End, column.Aggregation));
                 }
@@ -95,6 +94,23 @@ public abstract class ModelBase
                     AggregateOutputBuffer.ColumnBuffers.Add(null); //null if no output
                 }
             }
+        }
+        if (OutputSet.IndividualOutput)
+        {
+            //get list of stuff to export
+            //scalars
+
+            for (int i = 0; i < ScalarFields.Count; i++)
+            {
+                FieldInfo field = ScalarFields[i];
+                ScalarBase scalar = (ScalarBase)field.GetValue(this)!;
+                if (OutputSet.Scalars.Contains("Scalars.All") || OutputSet.Scalars.Contains(scalar.OutputName))
+                {
+                    scalar.IsOutput = true;
+                }
+            }
+            var scalarsToOutput = ScalarFields.Select(x => (IScalarOutputToString)x.GetValue(this)!).Where(x => x.IsOutput).Select(x => x.OutputName).ToArray()!;
+            IndividualOutputBuffer = new IndividualOutputBuffer(this.GetType().Name, scalarsToOutput);
         }
         Initialised = true;
     }
@@ -118,9 +134,9 @@ public abstract class ModelBase
             {
                 FieldInfo field = ColumnFields[i];
                 Column column = (Column)field.GetValue(this)!;
-                AggregateColumnBuffer? columnBuffer = AggregateOutputBuffer.ColumnBuffers[i];
-                if (columnBuffer is not null)
+                if (column.IsOutput)
                 {
+                    AggregateColumnBuffer columnBuffer = AggregateOutputBuffer.ColumnBuffers[i]!;
                     var span = column.TrimForExport(Projection.T_Start, Projection.T_End - Projection.T_Start + 1);
                     for (int t = Projection.T_Start; t <= Projection.T_End; t++)
                     {
@@ -133,6 +149,16 @@ public abstract class ModelBase
                     }
                 }
             }
+        }
+        if (IndividualOutputBuffer is not null)
+        {
+            IndividualOutputBuffer.OutputRecords.Add(
+                new IndividualOutputRecord(RecordIndex,
+                    string.Join(',',
+                        ScalarFields.Select(x => (IScalarOutputToString)x.GetValue(this)!)
+                        .Where(x => x.IsOutput)
+                        .Select(x => x.OutputToString()))));
+
         }
     }
     internal void Reset()
