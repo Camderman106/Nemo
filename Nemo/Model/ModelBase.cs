@@ -1,22 +1,24 @@
-﻿using Nemo.Model.Components;
+﻿using Nemo.IO;
+using Nemo.Model.Components;
 using System.Reflection;
 
 namespace Nemo.Model;
 public abstract class ModelBase
 {
-    internal List<KeyValuePair<string, Action<ReadOnlySpan<char>>>> DataScalarMap = new();
-    public static readonly double ZeroNoAverage = -1.23456789e300;
-    public List<ModelBase> ChildModels { get; set; } = new();
     public string Name { get; init; } = nameof(ModelBase);
     public string Description { get; init; } = string.Empty;
-    public Projection Projection { get; init; }
+    internal int RecordIndex = 0;
+    internal bool Initialised = false;
+    public static readonly double ZeroNoAverage = -1.23456789e300;
+    public List<ModelBase> ChildModels { get; set; } = new();    
+    private OutputSet OutputSet { get; init; }
+    private Projection Projection { get; init; }
     private List<FieldInfo> ColumnFields { get; init; }
     private List<FieldInfo> ScalarFields { get; init; }
     private List<FieldInfo> ModelComponents { get; init; }
-    private OutputSet OutputSet { get; init; }
     internal AggregateOutputBuffer? AggregateOutputBuffer { get; set; }
-    internal int RecordIndex = 0;
-    public ModelBase(Projection projection, OutputSet outputSet, string group)
+    internal List<KeyValuePair<string, Action<string>>> DataScalarMap = new();
+    public ModelBase(Projection projection, OutputSet outputSet)
     {
         Projection = projection;
         OutputSet = outputSet;
@@ -35,18 +37,38 @@ public abstract class ModelBase
             .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
             .Where(f => typeof(IModelComponent).IsAssignableFrom(f.FieldType)).ToList();
 
-        if (OutputSet.AggregatedOutput) //Set up aggregate buffer
+        
+    }
+    protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<string, T> converter) where T : notnull
+    {
+        DataScalarMap.Add(new KeyValuePair<string, Action<string>>(dataField, (dataValue) => scalar.SetValue(converter(dataValue))));
+    }
+    public virtual void OnNextRecord()
+    {
+
+    }
+
+    public void InjectModelData(TableRecord record)
+    {
+        foreach (var field in DataScalarMap)
         {
-            AggregateOutputBuffer = new AggregateOutputBuffer(group);
+            if (record.TryGetValue(field.Key, out var value))
+            {
+                field.Value.Invoke(value);
+            }
+            else
+            {
+                throw new InvalidDataException($"Field {field.Key} not found in data file");
+            }
         }
     }
 
-    protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<ReadOnlySpan<char>, T> converter) where T : notnull
+    internal void InitialiseBuffer(string group)
     {
-        DataScalarMap.Add(new KeyValuePair<string, Action<ReadOnlySpan<char>>>(dataField, (dataValue) => scalar.SetValue(converter(dataValue))));
-    }
-    internal void Initialise()
-    {
+        if (OutputSet.AggregatedOutput) //Set up aggregate buffer
+        {
+            AggregateOutputBuffer = new AggregateOutputBuffer(this.GetType().Name, group);
+        }
         for (int i = 0; i < ColumnFields.Count; i++)
         {
             FieldInfo field = ColumnFields[i];
@@ -59,13 +81,14 @@ public abstract class ModelBase
         }
         if (AggregateOutputBuffer is not null) //Set up aggregate buffer
         {
+            AggregateOutputBuffer.ColumnBuffers.Clear();
             for (int i = 0; i < ColumnFields.Count; i++)
             {
                 FieldInfo field = ColumnFields[i];
                 Column column = (Column)field.GetValue(this)!;
                 if (column.isOutput)
                 {
-                    AggregateOutputBuffer.ColumnBuffers.Add(new AggregateColumnBuffer(Projection.T_Start, Projection.T_End, column.Aggregation));
+                    AggregateOutputBuffer.ColumnBuffers.Add(new AggregateColumnBuffer(column.Name, Projection.T_Start, Projection.T_End, column.Aggregation));
                 }
                 else
                 {
@@ -73,6 +96,7 @@ public abstract class ModelBase
                 }
             }
         }
+        Initialised = true;
     }
     public virtual void Target()
     {
@@ -115,7 +139,7 @@ public abstract class ModelBase
     {
         for (int i = 0; i < ModelComponents.Count; i++)
         {
-            FieldInfo field = ColumnFields[i];
+            FieldInfo field = ModelComponents[i];
             IModelComponent component = (IModelComponent)field.GetValue(this)!;
             component.Reset();
         }

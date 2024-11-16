@@ -1,37 +1,92 @@
-﻿using Nemo.Model.Components;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace Nemo.Model;
 
 internal class AggregateOutputBuffer
 {
     internal Guid BufferId = Guid.NewGuid();
+    internal string ModelClass { get; init; }
     internal string Group { get; set; }
-    internal AggregateOutputBuffer(string group)
+
+    internal string GroupByKey => $"{ModelClass}|{Group}";
+    internal AggregateOutputBuffer(string modelclass, string group)
     {
+        ModelClass = modelclass;
         Group = group;
     }
 
     internal List<AggregateColumnBuffer?> ColumnBuffers { get; set; } = new(); //null if not output
-}
 
-internal class AggregateColumnBuffer
-{
-    internal AggregationMethod AggregationMethod { get; init; }
-    internal AggregateColumnBufferValue[] Values { get; set; }
-    internal AggregateColumnBuffer(int output_T_From, int output_T_To, AggregationMethod aggregation)
+    internal static AggregateOutputBuffer CreateEmptyDuplicate(AggregateOutputBuffer template)
     {
-        Values = new AggregateColumnBufferValue[output_T_To - output_T_From + 1];
-        AggregationMethod = aggregation;
+        AggregateOutputBuffer result = new AggregateOutputBuffer(template.ModelClass, template.Group);
+        foreach(AggregateColumnBuffer buffer in template.ColumnBuffers)
+        {
+            result.ColumnBuffers.Add(buffer?.CreateEmptyDuplicate());
+        }
+        return result;
     }
-    internal void Reset()
+    public static AggregateOutputBuffer MergeBuffers(IEnumerable<AggregateOutputBuffer> others)
     {
-        Array.Clear(Values, 0, Values.Length);
+        var first = others.First();
+        var result = CreateEmptyDuplicate(first);
+        foreach (AggregateOutputBuffer other in others)
+        {
+            if (other.ModelClass != result.ModelClass) throw new BufferException("Unable to merge buffers: Different ModelClass");
+            if (other.Group != result.Group) throw new BufferException("Unable to merge buffers: Different Group");
+            if (other.ColumnBuffers.Count != result.ColumnBuffers.Count) throw new BufferException("Unable to merge buffers: Column mismatch (how did this happen???");
+            Debug.Assert(result.ColumnBuffers.Select(x => x?.ColumnName).SequenceEqual(other.ColumnBuffers.Select(x => x?.ColumnName)));
+            for (int i = 0; i < result.ColumnBuffers.Count; i++)
+            {
+                AggregateColumnBuffer? a = result.ColumnBuffers[i];
+                AggregateColumnBuffer? b = other.ColumnBuffers[i];
+                Debug.Assert((a is not null && b is not null) || (a is null && b is null));
+                if (a is null || b is  null) continue;
+                for (int j = 0; j < a.Values.Length; j++)
+                {
+                    a.Values[j].Sum += b.Values[j].Sum;
+                    a.Values[j].Count += b.Values[j].Count;
+                }
+            }
+        }        
+        return result;
+    }
+    internal static void Export(IEnumerable<AggregateOutputBuffer> buffers, Job job)
+    {
+        var files = buffers.GroupBy(x => x.ModelClass);
+        string headers = null;
+        foreach (IGrouping<string, AggregateOutputBuffer> file in files)
+        {
+            string path = Path.Combine(job.JobDirectory, job.Name + "-" + file.Key + ".csv");
+            using var streamwriter = new StreamWriter(path);
+            if (headers is null) 
+            {
+                var first = file.ToList()[0];
+                headers = $"modelclass,group,time,{string.Join(',', first.ColumnBuffers.Where(x => x is not null).Select(x => x!.ColumnName))}";
+                streamwriter.WriteLine(headers);
+            }
+            foreach (var buffer in buffers) 
+            {
+                for (int t = job.Projection.T_Start; t < job.Projection.T_End; t++)
+                {                 
+                    int offset = t - job.Projection.T_Min;
+                    string line = $"{buffer.ModelClass},{buffer.Group},{t},{string.Join(',', buffer.ColumnBuffers.Where(x => x is not null).Select(x => x.OutputValue(offset)))}";
+                    streamwriter.WriteLine(line);
+                }
+            }            
+        }
     }
 }
-[DebuggerDisplay("Sum({Sum})  Count({Count})")]
-internal struct AggregateColumnBufferValue
+internal class BufferException : Exception
 {
-    internal UInt32 Count;
-    internal double Sum;
+    public BufferException()
+    {
+    }
+    public BufferException(string? message) : base(message)
+    {
+    }
+
+    public BufferException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }

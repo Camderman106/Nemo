@@ -21,7 +21,7 @@ public class Column : IModelComponent
         EvaluationFunction = evalFunction;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public double At(int t)
     {
         int offset = t - T_min;
@@ -82,9 +82,9 @@ internal struct ColumnValue
     internal ColumnValueState State { get; set; }
     internal double Value { get; set; }
 }
-internal enum ColumnValueState
+internal enum ColumnValueState : byte
 {
-    Uncalculated = 0,
-    ZeroNoAverage = 1,
-    Calculated = 2
+    Uncalculated  = 0b00000000,
+    ZeroNoAverage = 0b00000001,
+    Calculated    = 0b00000010
 }

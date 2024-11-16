@@ -8,53 +8,7 @@ public class IOTests
 {
     [TestMethod]
     public void CSVSource()
-    {
-        {
-            string path1 = "FakeData.csv";
-            CSVSource reader1 = new CSVSource(path1);
-            var index1 = Table.From(reader1).IndexSequential();
-            //Assert.AreEqual(3, index2[0]);
-            Assert.AreEqual(51, index1.OffsetMap[1]);
-            Assert.AreEqual(85, index1.OffsetMap[2]);
-            Assert.AreEqual(118, index1.OffsetMap[3]);
-            Assert.AreEqual(151, index1.OffsetMap[4]);
-            Assert.AreEqual(184, index1.OffsetMap[5]);
-        }
-        {
-            string path2 = "FakeDataNoBOM.csv";
-            CSVSource reader2 = new CSVSource(path2);
-            var index2 = Table.From(reader2).IndexSequential();
-            //Assert.AreEqual(3 - 3, index2[0]);
-            Assert.AreEqual(51 - 3, index2.OffsetMap[1]);
-            Assert.AreEqual(85 - 3, index2.OffsetMap[2]);
-            Assert.AreEqual(118 - 3, index2.OffsetMap[3]);
-            Assert.AreEqual(151 - 3, index2.OffsetMap[4]);
-            Assert.AreEqual(184 - 3, index2.OffsetMap[5]);
-        }
-
-        {
-            string path1 = "FakeData.csv";
-            CSVSource reader1 = new CSVSource(path1);
-            var index1 = Table.From(reader1).IndexSequential(false);
-            Assert.AreEqual(3, index1.OffsetMap[0]);
-            Assert.AreEqual(51, index1.OffsetMap[1]);
-            Assert.AreEqual(85, index1.OffsetMap[2]);
-            Assert.AreEqual(118, index1.OffsetMap[3]);
-            Assert.AreEqual(151, index1.OffsetMap[4]);
-            Assert.AreEqual(184, index1.OffsetMap[5]);
-        }
-        {
-            string path2 = "FakeDataNoBOM.csv";
-            CSVSource reader2 = new CSVSource(path2);
-            var index2 = Table.From(reader2).IndexSequential(false);
-            Assert.AreEqual(3 - 3, index2.OffsetMap[0]);
-            Assert.AreEqual(51 - 3, index2.OffsetMap[1]);
-            Assert.AreEqual(85 - 3, index2.OffsetMap[2]);
-            Assert.AreEqual(118 - 3, index2.OffsetMap[3]);
-            Assert.AreEqual(151 - 3, index2.OffsetMap[4]);
-            Assert.AreEqual(184 - 3, index2.OffsetMap[5]);
-        }
-
+    {       
         {
             string path = "FakeData.csv";
             CSVSource reader = new CSVSource(path);

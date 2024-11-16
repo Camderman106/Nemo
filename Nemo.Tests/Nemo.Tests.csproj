@@ -17,6 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="2023Q3YieldCurve.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="FakeDataWithGroup.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="FakeData.csv">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

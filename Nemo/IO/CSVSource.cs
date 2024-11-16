@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 namespace Nemo.IO;
 
 /// <summary>

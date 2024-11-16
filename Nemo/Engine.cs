@@ -1,7 +1,9 @@
 ﻿using Nemo.IO;
 using Nemo.Model;
+using Nemo.Model.Components;
 using nietras.SeparatedValues;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Nemo;
 
@@ -21,30 +23,98 @@ public class Engine<TModel> where TModel : ModelBase
     }
     public void Execute(Job job)
     {
-        CSVSource data = job.Records;
-        using var reader = new StreamReader(new FileStream(data.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
-        using var sep = Sep.Auto.Reader().From(reader);
-        var instance = ModelFactory(job.Projection, job.OutputSet);
-        foreach (var rec in sep)
-        {
-            InjectScalarData(instance, rec);
-        }
-    }
+        Stopwatch JobTimer = Stopwatch.StartNew();
+        Directory.CreateDirectory(job.JobDirectory);
+        var records = Table.From(job.Records).AsRecords();
 
-    /// <summary>
-    /// This method injects the scalars with data from each record without any unnecessary allocations making it fast as fuck
-    /// Whilst its not ideal for the SepReader.Row to be a dependency here, its a ref struct. So we don't have much choice as it can't be passed to any other complex structure
-    /// Given this limitation, responsibility within the model class didnt seem right, not did respondibility inside the CSVSource. Hence it is here in the engine
-    /// </summary>
-    /// <param name="instance"></param>
-    /// <param name="record"></param>
-    private static void InjectScalarData(TModel instance, SepReader.Row record)
-    {
-        foreach (var dataField in instance.DataScalarMap)
+        if (GroupBy is null)
         {
-            dataField.Value.Invoke(record[dataField.Key].Span); //never even had to allocate it to a string!
+            var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+            ProcessBatch(instance, records);
         }
+        else
+        {   
+            IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy]).Select(x => x.ToList());
+            if (ChunkSize is not null) { groups = groups.SelectMany(x => x.Chunk(ChunkSize.Value)).ToList(); }
+            if (MultiThreading)
+            {
+                ParallelOptions options = new ParallelOptions() { MaxDegreeOfParallelism = MaxThreads };
+                Parallel.ForEach(groups, options , (group) => 
+                {
+                    var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                    ProcessBatch(instance, group);
+                });
+            }
+            else
+            {
+                foreach (var group in groups)
+                {
+                    var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                    ProcessBatch(instance, group);
+                }
+            }
+        }
+        //merge buffers again
+        ConcurrentBag<AggregateOutputBuffer> bag = new();
+        var buffergroups = AggregateBuffers.GroupBy(x => x.GroupByKey);
+        foreach (var buffergroup in buffergroups)
+        {
+            bag.Add(AggregateOutputBuffer.MergeBuffers(buffergroup));
+        }
+        AggregateBuffers = bag;
+        AggregateOutputBuffer.Export(bag, job);
+        Console.WriteLine($"Job: {job.Name} completed in {(float)JobTimer.ElapsedMilliseconds/1000}s");
     }
+    
+    public void ProcessBatch(TModel instance, IEnumerable<TableRecord> records)
+    {
+        string group = "";
+        if (GroupBy is not null)
+        {
+            if (records.First().ContainsKey(GroupBy))
+            {
+                group = records.First()[GroupBy];
+            }
+            else
+            {
+                throw new EngineException("Groupby column not found");
+            }
+        }
+        if (!instance.Initialised) instance.InitialiseBuffer(group);
+        Stopwatch Odometer = Stopwatch.StartNew();
+        Stopwatch BatchTimer = Stopwatch.StartNew();
+        int BatchCount = 0;
+        foreach (var record in records)
+        {
+            try
+            {
+                instance.RecordIndex++;
+                instance.InjectModelData(record);
+                instance.OnNextRecord();
+                instance.Target();
+                instance.OutputToBuffer();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Model point skipped {record.Index}");
+                Console.WriteLine($"{ex.Message}");
+            }
+            finally
+            {
+                BatchCount++;
+                if (BatchCount % 100 == 0)
+                {
+                    Console.WriteLine($"Odometer> {BatchCount}| ({Odometer.ElapsedMilliseconds}ms / 100 policies)");
+                    Odometer.Reset();
+                }
+                instance.Reset();
+            }            
+        }
+        if(instance.AggregateOutputBuffer is not null) 
+            AggregateBuffers.Add(instance.AggregateOutputBuffer);
+        Console.WriteLine($"Batch complete: Group '{group}' with {BatchCount} records took {(float)BatchTimer.ElapsedMilliseconds/1000}s");
+    }
+    
 
     public Engine<TModel> UseMultiThreading(bool multiThreading)
     {
@@ -67,4 +137,18 @@ public class Engine<TModel> where TModel : ModelBase
         return this;
     }
 
+}
+internal class EngineException : Exception
+{
+    public EngineException()
+    {
+    }
+
+    public EngineException(string? message) : base(message)
+    {
+    }
+
+    public EngineException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }

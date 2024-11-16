@@ -10,6 +10,8 @@
 		</AssemblyAttribute>
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Sep" Version="0.5.5" />
+	  <Reference Include="Sep">
+	    <HintPath>..\..\Sep\artifacts\bin\Sep\release_net8.0\Sep.dll</HintPath>
+	  </Reference>
 	</ItemGroup>
 </Project>

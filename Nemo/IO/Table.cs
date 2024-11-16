@@ -1,7 +1,8 @@
 ﻿using nietras.SeparatedValues;
+using System.Collections;
 using System.Collections.Frozen;
 using System.Diagnostics;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 namespace Nemo.IO;
@@ -9,48 +10,14 @@ namespace Nemo.IO;
 public class Table
 {
     public CSVSource CSVSource { get; private set; } = null!;
+    private Encoding Encoding => CSVSource.Encoding;
+    private string FilePath => CSVSource.FilePath;
+    private string LineTerminator => CSVSource.LineTerminator;
     public static Table From(CSVSource cSVSource)
     {
         return new Table() { CSVSource = cSVSource };
     }
-    public class Sequential : IDisposable
-    {
-        internal CSVSource CSVSource { get; private set; }
-        private FileStream FileStream { get; init; }
-        private SepReader SepReader { get; init; }
-        internal IReadOnlyDictionary<int, long> OffsetMap { get; init; }
-        public bool HasHeaders { get; init; }
-        public Sequential(CSVSource source, IReadOnlyDictionary<int, long> offsetMap, bool hasHeaders)
-        {
-            CSVSource = source;
-            OffsetMap = offsetMap;
-            HasHeaders = hasHeaders;
-            FileStream = new FileStream(CSVSource.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096);
-            SepReader = Sep.Auto.Reader().From(FileStream);
-        }
-        
-        public IEnumerable<IReadOnlyDictionary<string, string>> AsRecords()
-        {
-            using var reader = new StreamReader(new FileStream(CSVSource.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
-            using var sep = Sep.Auto.Reader().From(FileStream);
-            var header = sep.Header.ColNames;
-            foreach (var row in sep)
-            {
-                KeyValuePair<string, string>[] kvp = new KeyValuePair<string, string>[header.Count];
-                for (int i = 0; i < header.Count; i++)
-                {
-                    kvp[i] = new KeyValuePair<string, string>(header[i], row[i].ToString());
-                }
-                yield return new Dictionary<string, string>(kvp).ToFrozenDictionary();
-            }
-        }
-        public void Dispose()
-        {
-            SepReader?.Dispose();
-            FileStream?.Dispose();
-        }
-
-    }
+    
     public class ColumnIndexed : IDisposable
     {
         internal CSVSource CSVSource { get; private set; }
@@ -59,7 +26,6 @@ public class Table
         public bool HasHeaders { get; init; }
         private StreamReader StreamReader { get; init; }
         private SepReader SepReader { get; set; }
-        public string LastDebugMessage { get; private set; } = string.Empty;
         private int ColumnCount { get; init; }
         public ColumnIndexed(CSVSource source, IReadOnlyDictionary<StringArrayKey, long> offsetMap, bool hasHeaders)
         {
@@ -73,111 +39,99 @@ public class Table
             ColumnCount = SepReader.Header.ColNames.Count;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string LookupString(string[] lookupColumnValues, string returnColumn)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false })).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4})).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
             }
             else
             {
-                LastDebugMessage = $"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}";
-                throw new LookupException(LastDebugMessage);
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
             }
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string LookupString(string[] lookupColumnValues, string returnColumn, Func<string> Fallback)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false })).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4 })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
             }
             else
             {
-                LastDebugMessage = $"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}";
                 return Fallback();
             }
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double LookupDouble(string[] lookupColumnValues, string returnColumn)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false })).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4 })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
             else
             {
-                LastDebugMessage = $"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}";
-                throw new LookupException(LastDebugMessage);
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
             }
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double LookupDouble(string[] lookupColumnValues, string returnColumn, Func<double> Fallback)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false })).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4 })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
             else
             {
-                LastDebugMessage = $"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}";
                 return Fallback();
             }
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int LookupInt(string[] lookupColumnValues, string returnColumn)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false })).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4 })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
             else
             {
-                LastDebugMessage = $"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}";
-                throw new LookupException(LastDebugMessage);
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
             }
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int LookupInt(string[] lookupColumnValues, string returnColumn, Func<int> Fallback)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
                 StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false })).From(StreamReader);
+                SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = 1024 * 4 })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
             else
             {
-                LastDebugMessage = $"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}";
                 return Fallback();
             }
         }
@@ -189,11 +143,6 @@ public class Table
 
     }
 
-    public Sequential IndexSequential(bool hasHeaders = true)
-    {
-        var offsetMap = CreateIndex(hasHeaders);
-        return new Sequential(CSVSource, offsetMap, hasHeaders);
-    }
     public ColumnIndexed IndexByColumns(string[] indexByColumns) //headers implicitly required
     {
         var offsetMap = CreateIndexByColumns(indexByColumns);
@@ -204,9 +153,7 @@ public class Table
         var offsetMap = CreateIndexByColumns(indexByColumns);
         return new ColumnIndexed(CSVSource, offsetMap, hasHeaders);
     }
-    private Encoding Encoding => CSVSource.Encoding;
-    private string FilePath => CSVSource.FilePath;
-    private string LineTerminator => CSVSource.LineTerminator;
+
     internal IReadOnlyDictionary<StringArrayKey, long> CreateIndexByColumns(string[] columnHeadersToIndex)
     {
         bool DetectedDuplicateKeys = false;
@@ -290,6 +237,18 @@ public class Table
         }
         return RowPositions;
     }
+
+    public IEnumerable<TableRecord> AsRecords()
+    {
+        using var reader = new StreamReader(new FileStream(CSVSource.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+        using var sep = Sep.Auto.Reader().From(reader);
+        var header = sep.Header.ColNames;
+        IReadOnlyDictionary<string, int> headerIndex = header.Zip(Enumerable.Range(0, header.Count)).ToDictionary(x => x.First, x => x.Second);
+        foreach (var row in sep)
+        {
+            yield return new TableRecord(row.LineNumberFrom, row[sep.Header.ColNames].ParseToArray<string>(), headerIndex);
+        }
+    }
 }
 
 internal class LookupException : Exception
@@ -348,3 +307,56 @@ public class StringArrayKey : IEquatable<StringArrayKey>
     }
 }
 
+public record TableRow
+{
+    public TableRow(int index, string[] values)
+    {
+        Index = index;
+        Values = values;
+    }
+
+    public int Index { get; init; }
+    public string[] Values { get; set; }
+}
+public record TableRecord : TableRow, IReadOnlyDictionary<string, string>
+{
+    private IReadOnlyDictionary<string, int> HeaderIndex;
+    public TableRecord(int index, string[] values, IReadOnlyDictionary<string, int> headerIndex) : base(index, values)
+    {
+        HeaderIndex = headerIndex;
+    }
+
+    public string this[string key] => Values[HeaderIndex[key]];
+
+    public IEnumerable<string> Keys => HeaderIndex.Keys;
+
+    public int Count => HeaderIndex.Count;
+
+    IEnumerable<string> IReadOnlyDictionary<string, string>.Values => HeaderIndex.Values.Select(x => Values[x]);
+
+    public bool ContainsKey(string key)
+    {
+        return HeaderIndex.ContainsKey(key);
+    }
+
+    public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+    {
+        return HeaderIndex.Keys.Select(x => new KeyValuePair<string,string>(x, this[x])).GetEnumerator();
+    }
+
+    public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value)
+    {
+        if( HeaderIndex.TryGetValue(key, out int index))
+        {
+            value = Values[index];
+            return true;
+        }
+        value = null;
+        return false;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return ((IEnumerable)HeaderIndex).GetEnumerator();
+    }
+}

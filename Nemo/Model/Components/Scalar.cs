@@ -36,7 +36,7 @@ public class Scalar<T> : IModelComponent where T : notnull
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public T GetValue()
     {
         if (_calculated)
