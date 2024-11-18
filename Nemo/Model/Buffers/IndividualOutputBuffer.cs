@@ -3,16 +3,14 @@
 internal class IndividualOutputBuffer
 {
     internal Guid BufferId = Guid.NewGuid();
-
+    internal string ModelClass { get; init; }
+    internal string[] Headers { get; init; }
+    internal List<IndividualOutputRecord> OutputRecords { get; init; } = new();
     public IndividualOutputBuffer(string modelClass, string[] headers)
     {
         ModelClass = modelClass;
         Headers = headers;
     }
-
-    internal string ModelClass { get; init; }
-    internal string[] Headers { get; init; }
-    internal List<IndividualOutputRecord> OutputRecords { get; init; } = new();
     public static void Export(IEnumerable<IndividualOutputBuffer> buffers, Job job)
     {
         var files = buffers.GroupBy(x => x.ModelClass).ToList();

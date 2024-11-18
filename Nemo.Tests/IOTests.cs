@@ -136,7 +136,7 @@ public class IOTests
         }
     }
     [TestMethod]
-    public void TestLookups()
+    public void TestIndexByColumnsLookups()
     {
         {
             string path = "FakeData.csv";
@@ -169,7 +169,92 @@ public class IOTests
             Assert.AreEqual(-1, table.LookupInt(["xxx"], "SUM_ASSURED", () => -1));
         }
     }
+    [TestMethod]
+    public void TestIndexByColumnsByPositionLookups()
+    {
+        {
+            string path = "FakeData.csv";
+            CSVSource source = new CSVSource(path);
+            var table = Table.From(source).IndexByColumns([1]);
 
+            Assert.AreEqual("20/10/1955", table.LookupString(["P0003"], 2));
+            Assert.AreEqual(36, table.LookupDouble(["P0005"], 4));
+            Assert.AreEqual(100000, table.LookupInt(["P0001"], 3));
+
+            Assert.ThrowsException<LookupException>(() => table.LookupString(["xxx"], "DOB"));
+
+            Assert.AreEqual("Missing", table.LookupString(["xxx"], 2, () => "Missing"));
+            Assert.AreEqual(-1, table.LookupDouble(["xxx"], 4, () => -1d));
+            Assert.AreEqual(-1, table.LookupInt(["xxx"], 3, () => -1));
+        }
+        {
+            string path = "FakeDataNOBOM.csv";
+            CSVSource source = new CSVSource(path);
+            var table = Table.From(source).IndexByColumns([1]);
+
+            Assert.AreEqual("20/10/1955", table.LookupString(["P0003"], 2));
+            Assert.AreEqual(36, table.LookupDouble(["P0005"], 4));
+            Assert.AreEqual(100000, table.LookupInt(["P0001"], 3));
+
+            Assert.ThrowsException<LookupException>(() => table.LookupString(["xxx"], "DOB"));
+
+            Assert.AreEqual("Missing", table.LookupString(["xxx"], 2, () => "Missing"));
+            Assert.AreEqual(-1, table.LookupDouble(["xxx"], 4, () => -1d));
+            Assert.AreEqual(-1, table.LookupInt(["xxx"], 3, () => -1));
+        }
+    }
+    [TestMethod]
+    public void TestIndexByRowIndexLookups()
+    {
+        {
+            string path = "FakeData.csv";
+            CSVSource source = new CSVSource(path);
+            var table = Table.From(source).IndexByRowIndex(true);
+
+            Assert.AreEqual("20/10/1955", table.LookupString(3, 2));
+            Assert.AreEqual(36, table.LookupDouble(5, 4));
+            Assert.AreEqual(100000, table.LookupInt(1, 3));
+
+            Assert.ThrowsException<LookupException>(() => table.LookupString(-1, 1));
+        }
+        {
+            string path = "FakeDataNOBOM.csv";
+            CSVSource source = new CSVSource(path);
+            var table = Table.From(source).IndexByRowIndex(true);
+
+            Assert.AreEqual("20/10/1955", table.LookupString(3, 2));
+            Assert.AreEqual(36, table.LookupDouble(5, 4));
+            Assert.AreEqual(100000, table.LookupInt(1, 3));
+
+            Assert.ThrowsException<LookupException>(() => table.LookupString(-1, 1));
+        }
+    }
+    [TestMethod]
+    public void TestIndexByRowIndexLookupsNoHeader()
+    {
+        {
+            string path = "FakeData.csv";
+            CSVSource source = new CSVSource(path);
+            var table = Table.From(source).IndexByRowIndex(false);
+
+            Assert.AreEqual("20/10/1955", table.LookupString(4, 2));
+            Assert.AreEqual(36, table.LookupDouble(6, 4));
+            Assert.AreEqual(100000, table.LookupInt(2, 3));
+
+            Assert.ThrowsException<LookupException>(() => table.LookupString(-1, 1));
+        }
+        {
+            string path = "FakeDataNOBOM.csv";
+            CSVSource source = new CSVSource(path);
+            var table = Table.From(source).IndexByRowIndex(false);
+
+            Assert.AreEqual("20/10/1955", table.LookupString(4, 2));
+            Assert.AreEqual(36, table.LookupDouble(6, 4));
+            Assert.AreEqual(100000, table.LookupInt(2, 3));
+
+            Assert.ThrowsException<LookupException>(() => table.LookupString(-1, 1));
+        }
+    }
     [TestMethod]
     public void TestLookupsPerformance()
     {
@@ -177,7 +262,7 @@ public class IOTests
             string path = "FakeData.csv";
             CSVSource source = new CSVSource(path);
             var table = Table.From(source).IndexByColumns(["POL_NO"]);
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 10000; i++)
             {
                 Assert.AreEqual("20/10/1955", table.LookupString(["P0003"], "DOB"));
                 Assert.AreEqual(36, table.LookupDouble(["P0005"], "AGE_AT_ENTRY"));

@@ -9,8 +9,12 @@ internal interface IScalarOutputToString
     string OutputName { get; }
     string OutputToString();
 }
+public abstract class ScalarBase
+{
+    public string OutputName { get; init; }
+    internal bool IsOutput { get; set; }
+}
 [DebuggerDisplay("{Name}: {typeof(T)} {_value}")]
-
 public class Scalar<T> : ScalarBase, IScalarOutputToString, IModelComponent where T : notnull
 {
     private bool _calculated;

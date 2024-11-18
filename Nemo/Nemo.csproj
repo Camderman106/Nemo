@@ -10,8 +10,6 @@
 		</AssemblyAttribute>
 	</ItemGroup>
 	<ItemGroup>
-	  <Reference Include="Sep">
-	    <HintPath>..\..\Sep\artifacts\bin\Sep\release_net8.0\Sep.dll</HintPath>
-	  </Reference>
+	  <ProjectReference Include="..\..\Sep\src\Sep\Sep.csproj" />
 	</ItemGroup>
 </Project>

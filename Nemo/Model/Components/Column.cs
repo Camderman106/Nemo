@@ -62,11 +62,11 @@ public class Column : IModelComponent
     {
         return Values[t - T_min].State > 0;
     }
-    internal double View(int t)
+    public double Peek(int t)
     {
         return Values[t - T_min].Value;
     }
-    public void Reset()
+    void IModelComponent.Reset()
     {
         Array.Clear(Values, 0, Values.Length);
     }

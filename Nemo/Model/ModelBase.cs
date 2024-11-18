@@ -39,7 +39,6 @@ public abstract class ModelBase
             .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
             .Where(f => typeof(IModelComponent).IsAssignableFrom(f.FieldType)).ToList();
 
-
     }
     protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<string, T> converter) where T : notnull
     {
@@ -67,17 +66,6 @@ public abstract class ModelBase
 
     internal void InitialiseBuffer(string group)
     {
-
-        for (int i = 0; i < ColumnFields.Count; i++)
-        {
-            FieldInfo field = ColumnFields[i];
-            Column column = (Column)field.GetValue(this)!;
-            column.ColumnIndex = i;
-            if (OutputSet.Columns.Contains("Columns.All") || OutputSet.Columns.Contains(column.Name))
-            {
-                column.IsOutput = true;
-            }
-        }
         if (OutputSet.AggregatedOutput) //Set up aggregate buffer
         {
             AggregateOutputBuffer = new AggregateOutputBuffer(this.GetType().Name, group);
@@ -85,8 +73,9 @@ public abstract class ModelBase
             {
                 FieldInfo field = ColumnFields[i];
                 Column column = (Column)field.GetValue(this)!;
-                if (column.IsOutput)
+                if (OutputSet.Columns.Contains("Columns.All") || OutputSet.Columns.Contains(column.Name))
                 {
+                    column.IsOutput = true;
                     AggregateOutputBuffer.ColumnBuffers.Add(new AggregateColumnBuffer(column.Name, Projection.T_Start, Projection.T_End, column.Aggregation));
                 }
                 else
@@ -97,9 +86,6 @@ public abstract class ModelBase
         }
         if (OutputSet.IndividualOutput)
         {
-            //get list of stuff to export
-            //scalars
-
             for (int i = 0; i < ScalarFields.Count; i++)
             {
                 FieldInfo field = ScalarFields[i];
@@ -119,9 +105,9 @@ public abstract class ModelBase
         foreach (var columnField in ColumnFields)
         {
             Column column = (Column)columnField.GetValue(this)!;
-            for (var i = Projection.T_Start; i <= Projection.T_End; i++)
-            {
-                column.At(i);
+            for (var i = Projection.T_Start; i <= Projection.T_End; i++) 
+            { 
+                column.At(i); 
             }
         }
     }
