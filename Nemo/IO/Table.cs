@@ -17,8 +17,8 @@ public class Table
     {
         return new Table() { CSVSource = cSVSource };
     }
-    const int LookupBufferSize = 2 * 1024;
-    public class Sequential :IDisposable
+    const int LookupBufferSize = 512;
+    public class Sequential : IDisposable
     {
         public void Dispose()
         {
@@ -42,7 +42,7 @@ public class Table
             ColumnIndexMap = Enumerable.Range(0, SepReader.Header.ColNames.Count).Select(x => new KeyValuePair<string, int>(SepReader.Header.ColNames[x], x)).ToDictionary();
             ColumnCount = SepReader.Header.ColNames.Count;
             StreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
-            SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
+            //SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
         }
         #region Sequential.Lookups
         public string LookupString(int index, string returnColumn)
@@ -50,9 +50,7 @@ public class Table
             if (!HasHeaders) throw new LookupException("Cannot return by column name for file without headers");
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(HasHeaders && ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
             }
@@ -66,9 +64,7 @@ public class Table
             if (!HasHeaders) throw new LookupException("Cannot return by column name for file without headers");
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(HasHeaders && ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
             }
@@ -82,9 +78,7 @@ public class Table
             if (!HasHeaders) throw new LookupException("Cannot return by column name for file without headers");
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(HasHeaders && ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -98,9 +92,7 @@ public class Table
             if (!HasHeaders) throw new LookupException("Cannot return by column name for file without headers");
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(HasHeaders && ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -114,9 +106,7 @@ public class Table
             if (!HasHeaders) throw new LookupException("Cannot return by column name for file without headers");
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(HasHeaders && ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -130,9 +120,7 @@ public class Table
             if (!HasHeaders) throw new LookupException("Cannot return by column name for file without headers");
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(HasHeaders && ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -145,9 +133,7 @@ public class Table
         {
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(!HasHeaders || ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[returnColumn].Span.ToString();
             }
@@ -161,9 +147,7 @@ public class Table
         {
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(!HasHeaders || ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[returnColumn].Span);
             }
@@ -177,9 +161,7 @@ public class Table
         {
             if (OffsetMap.TryGetValue(index, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(!HasHeaders || ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[returnColumn].Span);
             }
@@ -212,7 +194,7 @@ public class Table
             SepReader = Sep.Auto.Reader(o => (o with { HasHeader = true })).From(StreamReader);
             ColumnIndexMap = Enumerable.Range(0, SepReader.Header.ColNames.Count).Select(x => new KeyValuePair<string, int>(SepReader.Header.ColNames[x], x)).ToDictionary();
             ColumnCount = SepReader.Header.ColNames.Count;
-            SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
+            //SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
         }
         #region ColumnIndexed.Lookups
         public string LookupString(string[] lookupColumnValues, string returnColumn)
@@ -220,9 +202,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
             }
@@ -236,8 +216,6 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
                 SepReader.MoveNext();
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[ColumnIndexMap[returnColumn]].Span.ToString();
@@ -252,9 +230,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[returnColumnIndex].Span.ToString();
             }
@@ -268,9 +244,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return SepReader.Current[returnColumnIndex].Span.ToString();
             }
@@ -284,9 +258,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -300,9 +272,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);     
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -316,9 +286,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[returnColumnIndex].Span);
             }
@@ -332,9 +300,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return double.Parse(SepReader.Current[returnColumnIndex].Span);
             }
@@ -348,9 +314,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -364,9 +328,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[ColumnIndexMap[returnColumn]].Span);
             }
@@ -380,9 +342,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[returnColumnIndex].Span);
             }
@@ -396,9 +356,7 @@ public class Table
             StringArrayKey key = new StringArrayKey(lookupColumnValues);
             if (OffsetMap.TryGetValue(key, out long offset))
             {
-                StreamReader.BaseStream.Seek(offset, SeekOrigin.Begin);
-                SepReader  = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
-                SepReader.MoveNext();
+                SepReader.Seek(offset);
                 Debug.Assert(ColumnCount == SepReader.Current.ColCount);
                 return int.Parse(SepReader.Current[returnColumnIndex].Span);
             }

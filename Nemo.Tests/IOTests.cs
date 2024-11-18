@@ -262,7 +262,7 @@ public class IOTests
             string path = "FakeData.csv";
             CSVSource source = new CSVSource(path);
             var table = Table.From(source).IndexByColumns(["POL_NO"]);
-            for (int i = 0; i < 10000; i++)
+            for (int i = 0; i < 100000; i++)
             {
                 Assert.AreEqual("20/10/1955", table.LookupString(["P0003"], "DOB"));
                 Assert.AreEqual(36, table.LookupDouble(["P0005"], "AGE_AT_ENTRY"));
