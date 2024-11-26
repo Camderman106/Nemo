@@ -12,18 +12,16 @@ public abstract class ModelBase
     internal bool Initialised = false;
     public static readonly double ZeroNoAverage = -1.23456789e300;
     public List<ModelBase> ChildModels { get; set; } = new();
-    private OutputSet OutputSet { get; init; }
-    private Projection Projection { get; init; }
+    protected ModelContext Context { get; init; }
     private List<FieldInfo> ColumnFields { get; init; }
     private List<FieldInfo> ScalarFields { get; init; }
     private List<FieldInfo> ModelComponents { get; init; }
     internal AggregateOutputBuffer? AggregateOutputBuffer { get; set; }
     internal IndividualOutputBuffer? IndividualOutputBuffer { get; set; }
     internal List<KeyValuePair<string, Action<string>>> DataScalarMap = new();
-    public ModelBase(Projection projection, OutputSet outputSet)
+    public ModelBase(ModelContext context)
     {
-        Projection = projection;
-        OutputSet = outputSet;
+        Context = context;
 
         // Fetching all Column fields
         ColumnFields = this.GetType()
@@ -38,7 +36,6 @@ public abstract class ModelBase
         ModelComponents = this.GetType()
             .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
             .Where(f => typeof(IModelComponent).IsAssignableFrom(f.FieldType)).ToList();
-
     }
     protected void MapDataToScalar<T>(string dataField, Scalar<T> scalar, Func<string, T> converter) where T : notnull
     {
@@ -62,21 +59,22 @@ public abstract class ModelBase
                 throw new InvalidDataException($"Field {field.Key} not found in data file");
             }
         }
+        ChildModels.ForEach(x => x.InjectModelData(record));
     }
 
     internal void InitialiseBuffer(string group)
     {
-        if (OutputSet.AggregatedOutput) //Set up aggregate buffer
+        if (Context.OutputSet.AggregatedOutput) //Set up aggregate buffer
         {
             AggregateOutputBuffer = new AggregateOutputBuffer(this.GetType().Name, group);
             for (int i = 0; i < ColumnFields.Count; i++)
             {
                 FieldInfo field = ColumnFields[i];
                 Column column = (Column)field.GetValue(this)!;
-                if (OutputSet.Columns.Contains("Columns.All") || OutputSet.Columns.Contains(column.Name))
+                if (Context.OutputSet.Columns.Contains("Columns.All") || Context.OutputSet.Columns.Contains(column.Name))
                 {
                     column.IsOutput = true;
-                    AggregateOutputBuffer.ColumnBuffers.Add(new AggregateColumnBuffer(column.Name, Projection.T_Start, Projection.T_End, column.Aggregation));
+                    AggregateOutputBuffer.ColumnBuffers.Add(new AggregateColumnBuffer(column.Name, Context.Projection.T_Start, Context.Projection.T_End, column.Aggregation));
                 }
                 else
                 {
@@ -84,13 +82,13 @@ public abstract class ModelBase
                 }
             }
         }
-        if (OutputSet.IndividualOutput)
+        if (Context.OutputSet.IndividualOutput)
         {
             for (int i = 0; i < ScalarFields.Count; i++)
             {
                 FieldInfo field = ScalarFields[i];
                 ScalarBase scalar = (ScalarBase)field.GetValue(this)!;
-                if (OutputSet.Scalars.Contains("Scalars.All") || OutputSet.Scalars.Contains(scalar.OutputName))
+                if (Context.OutputSet.Scalars.Contains("Scalars.All") || Context.OutputSet.Scalars.Contains(scalar.OutputName))
                 {
                     scalar.IsOutput = true;
                 }
@@ -99,13 +97,14 @@ public abstract class ModelBase
             IndividualOutputBuffer = new IndividualOutputBuffer(this.GetType().Name, scalarsToOutput);
         }
         Initialised = true;
+        ChildModels.ForEach(x => x.InitialiseBuffer(group));
     }
     public virtual void Target()
     {
         foreach (var columnField in ColumnFields)
         {
             Column column = (Column)columnField.GetValue(this)!;
-            for (var i = Projection.T_Start; i <= Projection.T_End; i++) 
+            for (var i = Context.Projection.T_Start; i <= Context.Projection.T_End; i++) 
             { 
                 column.At(i); 
             }
@@ -123,8 +122,8 @@ public abstract class ModelBase
                 if (column.IsOutput)
                 {
                     AggregateColumnBuffer columnBuffer = AggregateOutputBuffer.ColumnBuffers[i]!;
-                    var span = column.TrimForExport(Projection.T_Start, Projection.T_End - Projection.T_Start + 1);
-                    for (int t = Projection.T_Start; t <= Projection.T_End; t++)
+                    var span = column.TrimForExport(Context.Projection.T_Start, Context.Projection.T_End - Context.Projection.T_Start + 1);
+                    for (int t = Context.Projection.T_Start; t <= Context.Projection.T_End; t++)
                     {
                         if (span[t].State == ColumnValueState.Calculated)
                         {
@@ -146,6 +145,7 @@ public abstract class ModelBase
                         .Select(x => x.OutputToString()))));
 
         }
+        ChildModels.ForEach(x => x.OutputToBuffer());
     }
     internal void Reset()
     {
@@ -155,5 +155,6 @@ public abstract class ModelBase
             IModelComponent component = (IModelComponent)field.GetValue(this)!;
             component.Reset();
         }
+        ChildModels.ForEach(x => x.Reset());
     }
 }

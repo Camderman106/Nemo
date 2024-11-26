@@ -88,8 +88,9 @@ namespace Nemo.Tests
         {
             internal Column column1;
             internal Column column2;
-            public TestClass(Projection proj, OutputSet outputSet, string group) : base(proj, outputSet)
+            public TestClass(ModelContext job) : base(job)
             {
+                var proj = job.Projection;
                 column1 = new Column("TestColumn", proj.T_Start, proj.T_End, AggregationMethod.Sum, (int t) => 2 * t + 1);
                 column2 = new Column("TestColumn2", proj.T_Start, proj.T_End, AggregationMethod.Sum, (int t) => column1.At(t));
             }
@@ -99,8 +100,9 @@ namespace Nemo.Tests
         [TestMethod]
         public void TestSimpleClass()
         {
-            Projection proj = new Projection(0,0,1,1, new Dictionary<string, CSVSource>());
-            TestClass testClass = new TestClass(proj, new OutputSet(), "group");
+            Projection proj = new Projection(0,0,1,1);
+            ModelContext job = new ModelContext("", "", proj, new(), new SourceManager());
+            TestClass testClass = new TestClass(job);
             testClass.InitialiseBuffer("testgroup");
             Assert.IsFalse(testClass.column2.IsCalculatedAt(0));
             testClass.Target();

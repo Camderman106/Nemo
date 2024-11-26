@@ -50,7 +50,7 @@ internal class AggregateOutputBuffer
         }
         return result;
     }
-    internal static void Export(IEnumerable<AggregateOutputBuffer> buffers, Job job)
+    internal static void Export(IEnumerable<AggregateOutputBuffer> buffers, ModelContext job)
     {
         var files = buffers.GroupBy(x => x.ModelClass);
         foreach (IGrouping<string, AggregateOutputBuffer> file in files)

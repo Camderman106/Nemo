@@ -10,6 +10,9 @@
 		</AssemblyAttribute>
 	</ItemGroup>
 	<ItemGroup>
+	  <PackageReference Include="ClosedXML" Version="0.104.2" />
+	</ItemGroup>
+	<ItemGroup>
 	  <ProjectReference Include="..\..\Sep\src\Sep\Sep.csproj" />
 	</ItemGroup>
 </Project>

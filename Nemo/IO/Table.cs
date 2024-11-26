@@ -42,7 +42,6 @@ public class Table
             ColumnIndexMap = Enumerable.Range(0, SepReader.Header.ColNames.Count).Select(x => new KeyValuePair<string, int>(SepReader.Header.ColNames[x], x)).ToDictionary();
             ColumnCount = SepReader.Header.ColNames.Count;
             StreamReader.BaseStream.Seek(0, SeekOrigin.Begin);
-            //SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
         }
         #region Sequential.Lookups
         public string LookupString(int index, string returnColumn)
@@ -56,7 +55,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with index: {index}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
         public string LookupString(int index, string returnColumn, Func<string> Fallback)
@@ -84,7 +83,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with index: {index}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
         public double LookupDouble(int index, string returnColumn, Func<double> Fallback)
@@ -112,7 +111,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with index: {index}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
         public int LookupInt(int index, string returnColumn, Func<int> Fallback)
@@ -139,7 +138,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with index: {index}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
         
@@ -153,7 +152,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with index: {index}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
         
@@ -167,7 +166,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with index: {index}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
         #endregion
@@ -194,7 +193,6 @@ public class Table
             SepReader = Sep.Auto.Reader(o => (o with { HasHeader = true })).From(StreamReader);
             ColumnIndexMap = Enumerable.Range(0, SepReader.Header.ColNames.Count).Select(x => new KeyValuePair<string, int>(SepReader.Header.ColNames[x], x)).ToDictionary();
             ColumnCount = SepReader.Header.ColNames.Count;
-            //SepReader = Sep.Auto.Reader(o => (o with { HasHeader = false, CharsMinimumLength = LookupBufferSize })).From(StreamReader);
         }
         #region ColumnIndexed.Lookups
         public string LookupString(string[] lookupColumnValues, string returnColumn)
@@ -208,7 +206,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
             }
         }
         public string LookupString(string[] lookupColumnValues, string returnColumn, Func<string> Fallback)
@@ -236,7 +234,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
             }
         }
         public string LookupString(string[] lookupColumnValues, ColumnIndex returnColumnIndex, Func<string> Fallback)
@@ -264,7 +262,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
             }
         }
         public double LookupDouble(string[] lookupColumnValues, string returnColumn, Func<double> Fallback)
@@ -292,7 +290,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
             }
         }
         public double LookupDouble(string[] lookupColumnValues, ColumnIndex returnColumnIndex, Func<double> Fallback)
@@ -320,7 +318,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
             }
         }
         public int LookupInt(string[] lookupColumnValues, string returnColumn, Func<int> Fallback)
@@ -348,7 +346,7 @@ public class Table
             }
             else
             {
-                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.FilePath)} with key: {key}");
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
             }
         }
         public int LookupInt(string[] lookupColumnValues, ColumnIndex returnColumnIndex, Func<int> Fallback)

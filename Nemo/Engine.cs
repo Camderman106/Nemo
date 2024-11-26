@@ -12,33 +12,35 @@ public class Engine<TModel> where TModel : ModelBase
     private bool MultiThreading = false;
     private int MaxThreads = 8;
     private string? GroupBy = null;
-    private Func<Projection, OutputSet, TModel> ModelFactory;
+    private Func<ModelContext, TModel> ModelFactory;
     internal ConcurrentBag<AggregateOutputBuffer> AggregateBuffers { get; private set; }
     internal ConcurrentBag<IndividualOutputBuffer> IndividualBuffers { get; private set; }
-    public Engine(Func<Projection, OutputSet, TModel> modelFactory)
+    public Engine(Func<ModelContext, TModel> modelFactory)
     {
         ModelFactory = modelFactory;
         AggregateBuffers = new ConcurrentBag<AggregateOutputBuffer>();
         IndividualBuffers = new ConcurrentBag<IndividualOutputBuffer>();
     }
-    public void Execute(Job job)
+
+    public void Execute(ModelContext context)
     {
         Stopwatch JobTimer = Stopwatch.StartNew();
-        Directory.CreateDirectory(job.JobDirectory);
-        var records = Table.From(job.Records).AsRecords();
+        Directory.CreateDirectory(context.JobDirectory);
+        if(context.Sources.Data is null) throw new ArgumentNullException(nameof(context.Sources.Data));
+        var records = Table.From(context.Sources.Data).AsRecords();
         ParallelOptions options = new ParallelOptions() { MaxDegreeOfParallelism = MaxThreads };
         //Setting switch
         switch (GroupBy is not null, ChunkSize is not null, MultiThreading)
         {
             case (false, false, false):
                 {
-                    var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                    var instance = ModelFactory.Invoke(context);
                     ProcessBatch(instance, records);
                     break;
                 }
             case (false, false, true):
                 {
-                    var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                    var instance = ModelFactory.Invoke(context);
                     ProcessBatch(instance, records);
                     break;
                 }
@@ -47,7 +49,7 @@ public class Engine<TModel> where TModel : ModelBase
                     IEnumerable<IEnumerable<TableRecord>> groups = records.Chunk(ChunkSize!.Value).ToList();
                     foreach (var group in groups)
                     {
-                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        var instance = ModelFactory.Invoke(context);
                         ProcessBatch(instance, group);
                     }
                     break;
@@ -57,7 +59,7 @@ public class Engine<TModel> where TModel : ModelBase
                     IEnumerable<IEnumerable<TableRecord>> groups = records.Chunk(ChunkSize!.Value).ToList();
                     Parallel.ForEach(groups, options, (group) =>
                     {
-                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        var instance = ModelFactory.Invoke(context);
                         ProcessBatch(instance, group);
                     });
                     break;
@@ -67,7 +69,7 @@ public class Engine<TModel> where TModel : ModelBase
                     IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy!]).Select(x => x.ToList());
                     foreach (var group in groups)
                     {
-                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        var instance = ModelFactory.Invoke(context);
                         ProcessBatch(instance, group);
                     }
                     break;
@@ -77,7 +79,7 @@ public class Engine<TModel> where TModel : ModelBase
                     IEnumerable<IEnumerable<TableRecord>> groups = records.GroupBy(x => x[GroupBy!]).Select(x => x.ToList());
                     Parallel.ForEach(groups, options, (group) =>
                     {
-                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        var instance = ModelFactory.Invoke(context);
                         ProcessBatch(instance, group);
                     });
                     break;
@@ -88,7 +90,7 @@ public class Engine<TModel> where TModel : ModelBase
                     groups = groups.SelectMany(x => x.Chunk(ChunkSize!.Value)).ToList();
                     foreach (var group in groups)
                     {
-                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        var instance = ModelFactory.Invoke(context);
                         ProcessBatch(instance, group);
                     }
                     break;
@@ -99,7 +101,7 @@ public class Engine<TModel> where TModel : ModelBase
                     groups = groups.SelectMany(x => x.Chunk(ChunkSize!.Value)).ToList();
                     Parallel.ForEach(groups, options, (group) =>
                     {
-                        var instance = ModelFactory.Invoke(job.Projection, job.OutputSet);
+                        var instance = ModelFactory.Invoke(context);
                         ProcessBatch(instance, group);
                     });
                     break;
@@ -117,9 +119,9 @@ public class Engine<TModel> where TModel : ModelBase
             AggregateBuffers = bag;
         }
 
-        if (job.OutputSet.AggregatedOutput) AggregateOutputBuffer.Export(AggregateBuffers, job);
-        if (job.OutputSet.IndividualOutput) IndividualOutputBuffer.Export(IndividualBuffers, job);
-        Console.WriteLine($"Job: {job.Name} completed in {(float)JobTimer.ElapsedMilliseconds / 1000}s");
+        if (context.OutputSet.AggregatedOutput) AggregateOutputBuffer.Export(AggregateBuffers, context);
+        if (context.OutputSet.IndividualOutput) IndividualOutputBuffer.Export(IndividualBuffers, context);
+        Console.WriteLine($"Job: {context.Name} completed in {(float)JobTimer.ElapsedMilliseconds / 1000}s");
     }
 
     public void ProcessBatch(TModel instance, IEnumerable<TableRecord> records)
@@ -142,9 +144,26 @@ public class Engine<TModel> where TModel : ModelBase
         int BatchCount = 0;
         foreach (var record in records)
         {
+            #if DEBUG            
+                instance.RecordIndex = record.Index - 1;
+                instance.InjectModelData(record);
+                instance.OnNextRecord();
+                instance.Target();
+                instance.OutputToBuffer();            
+            
+                BatchCount++;
+                if (BatchCount % 100 == 0)
+                {
+                    Console.WriteLine($"Odometer> {BatchCount}| ({Odometer.ElapsedMilliseconds}ms / 100 policies)");
+                    Odometer.Reset();
+                }
+                instance.Reset();
+
+            #else
+
             try
             {
-                instance.RecordIndex = record.Index;
+                instance.RecordIndex = record.Index -1;
                 instance.InjectModelData(record);
                 instance.OnNextRecord();
                 instance.Target();
@@ -152,7 +171,7 @@ public class Engine<TModel> where TModel : ModelBase
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Model point skipped {record.Index}");
+                Console.WriteLine($"Model point skipped: {instance.RecordIndex}");
                 Console.WriteLine($"{ex.Message}");
             }
             finally
@@ -165,6 +184,8 @@ public class Engine<TModel> where TModel : ModelBase
                 }
                 instance.Reset();
             }
+            #endif
+
         }
         if (instance.AggregateOutputBuffer is not null)
             AggregateBuffers.Add(instance.AggregateOutputBuffer);

@@ -21,15 +21,15 @@ namespace Nemo.Tests
         Column Reserve;
 
         Table.ColumnIndexed YieldCurve;
-        public SimpleExampleModel(Projection projection, OutputSet outputSet) : base(projection, outputSet)
+        public SimpleExampleModel(ModelContext context) : base(context)
         {
-            YieldCurve = Table.From(projection.Tables["YieldCurve"]).IndexByColumns(["T"]);
+            YieldCurve = Table.From(Context.Sources.Tables["YieldCurve"]).IndexByColumns(["T"]);
 
             DOB = new Scalar<string>("DOB");
             AgeAtEntry = new Scalar<double>("AgeAtEntry");
             SumAssured = new Scalar<double>("SumAssured");
             PolTermY = new Scalar<int>("PolTermY");
-
+            var projection = context.Projection;
             Age = new Column("Age", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
             {
                 DateOnly birthDate = DateOnly.Parse(DOB);
@@ -108,15 +108,14 @@ namespace Nemo.Tests
         [TestMethod]
         public void TestEndToEnd()
         {
-            CSVSource yieldcurve = new CSVSource("2023Q3YieldCurve.csv");
-            CSVSource data = new CSVSource("FakeDataWithGroup.csv");
-            var sources = new Dictionary<string, CSVSource>();
-            sources["YieldCurve"] = yieldcurve;
-            Projection projection = new Projection(0, 0, 1200, 1200, sources);
+            var sources = new SourceManager()
+                .AddCSVSource("YieldCurve", "2023Q3YieldCurve.csv")
+                .SetDataSource("FakeDataWithGroup.csv");
+            Projection projection = new Projection(0, 0, 1200, 1200);
             OutputSet outputSet = new OutputSet();
-            Job job = new Job("test", Directory.GetCurrentDirectory(), data, projection, outputSet);
+            ModelContext job = new ModelContext("test", Directory.GetCurrentDirectory(),  projection, outputSet, sources);
 
-            Engine<SimpleExampleModel> engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
+            Engine<SimpleExampleModel> engine = new Engine<SimpleExampleModel>((job) => new SimpleExampleModel(job));
             engine.Execute(job);
 
             
@@ -125,32 +124,28 @@ namespace Nemo.Tests
         [TestMethod]
         public void Test2EndToEnd()
         {
-            CSVSource yieldcurve = new CSVSource("2023Q3YieldCurve.csv");
-            CSVSource data = new CSVSource("FakeDataWithGroup.csv");
-            var sources = new Dictionary<string, CSVSource>();
-            sources["YieldCurve"] = yieldcurve;
-            Projection projection = new Projection(0, 0, 1200, 1200, sources);
+            var sources = new SourceManager()
+                .AddCSVSource("YieldCurve", "2023Q3YieldCurve.csv")
+                .SetDataSource("FakeDataWithGroup.csv");
+            Projection projection = new Projection(0, 0, 1200, 1200);
             OutputSet outputSet = new OutputSet();
-           
 
-            Job job2 = new Job("test2", Directory.GetCurrentDirectory(), data, projection, outputSet);
-            var engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
+            ModelContext job2 = new ModelContext("test2", Directory.GetCurrentDirectory(), projection, outputSet, sources);
+            var engine = new Engine<SimpleExampleModel>((job2) => new SimpleExampleModel(job2));
             engine.GroupRecordsBy("GROUP");
             engine.Execute(job2);
         }
         [TestMethod]
         public void Test3EndToEnd()
         {
-            CSVSource yieldcurve = new CSVSource("2023Q3YieldCurve.csv");
-            CSVSource data = new CSVSource("FakeDataWithGroup.csv");
-            var sources = new Dictionary<string, CSVSource>();
-            sources["YieldCurve"] = yieldcurve;
-            Projection projection = new Projection(0, 0, 1200, 1200, sources);
+            var sources = new SourceManager()
+                .AddCSVSource("YieldCurve", "2023Q3YieldCurve.csv")
+                .SetDataSource("FakeDataWithGroup.csv");
+            Projection projection = new Projection(0, 0, 1200, 1200);
             OutputSet outputSet = new OutputSet();
 
-
-            Job job3 = new Job("test3", Directory.GetCurrentDirectory(), data, projection, outputSet);
-            var engine = new Engine<SimpleExampleModel>((projection, outputSet) => new SimpleExampleModel(projection, outputSet));
+            ModelContext job3 = new ModelContext("test3", Directory.GetCurrentDirectory(), projection, outputSet, sources);
+            var engine = new Engine<SimpleExampleModel>((job2) => new SimpleExampleModel(job3));
             engine.GroupRecordsBy("GROUP");
             engine.Execute(job3);
         }

@@ -2,20 +2,21 @@
 namespace Nemo.IO;
 
 /// <summary>
-/// Represent a memory mapped csv file. Designed to be fast as fuck whilst using fuck all memory
-/// By default it will provide an IEnumerable<CSVRecord>
-/// It has an option to index the file by a certain set of columns and allow you to seem through the file that way
-/// It must be thread safe. So each thread will have its own stream
+/// In Nemo, all sources are converted to CSV sources before model execution. 
+/// Tables can be contructed from CSV sources and are able to search through them very quickly using clever indexing 
+/// Excel sources can be extracted to csv sources by the source manager
 /// </summary>
-public class CSVSource
+/// 
+public class CSVSource 
 {
+    public string OriginalPath { get; init; }
     public string FilePath { get; init; }
     internal Encoding Encoding { get; init; } = new UTF8Encoding(false);
     internal string LineTerminator { get; set; } = Environment.NewLine;
-    public CSVSource(string filePath)
+    internal CSVSource(string filePath, string originalPath = null!)
     {
         FilePath = filePath;
-
+        OriginalPath = originalPath ?? FilePath;
         //Detect the BOM properly
         var utf8nobom = new UTF8Encoding(false); //this prevents populating the preamble unless there actually is one. UTF8 has a mode with and without preamble
         using var stream = new FileStream(FilePath, FileMode.Open, FileAccess.Read);
@@ -54,5 +55,6 @@ public class CSVSource
             }
         }
     }
+    
 }
 

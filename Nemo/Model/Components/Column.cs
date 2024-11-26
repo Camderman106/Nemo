@@ -6,7 +6,6 @@ namespace Nemo.Model.Components;
 public class Column : IModelComponent
 {
     public string Name { get; init; }
-    public int ColumnIndex { get; internal set; }
     internal ColumnValue[] Values;
     private Func<int, double> EvaluationFunction;
     private readonly int T_min;

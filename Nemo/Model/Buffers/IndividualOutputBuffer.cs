@@ -11,7 +11,7 @@ internal class IndividualOutputBuffer
         ModelClass = modelClass;
         Headers = headers;
     }
-    public static void Export(IEnumerable<IndividualOutputBuffer> buffers, Job job)
+    public static void Export(IEnumerable<IndividualOutputBuffer> buffers, ModelContext job)
     {
         var files = buffers.GroupBy(x => x.ModelClass).ToList();
         foreach (var file in files)
