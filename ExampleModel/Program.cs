@@ -15,7 +15,7 @@ public class ExampleModel : ModelBase
             new Projection(0,0,120,120), 
             new OutputSet(),
             new SourceManager()
-            .SetDataSource("Inputs\\ExampleData.csv")
+            .SetDataSource("Inputs\\ExampleData10k.csv")
             .AddCSVSource("DiscountCurve", "Inputs\\SpotRates.csv")
             .AddExcelSource("AFC00", "Inputs\\AFC00.xlsx", "AFC00", "A3:D108")
             .AddExcelSource("AMC00", "Inputs\\AMC00.xlsx", "AMC00", "A3:D108")
@@ -48,15 +48,13 @@ public class ExampleModel : ModelBase
         Spots = Table.From(context.Sources.Tables["DiscountCurve"]).IndexByColumns(["Time"]);
 
         age = new Column("age", 
-            context.Projection.T_Min, 
-            context.Projection.T_Max, 
+            context,
             AggregationMethod.Average,
             (t) => age_initial + t
         );
 
         qx = new Column("qx",
-            context.Projection.T_Min,
-            context.Projection.T_Max,
+            context,
             AggregationMethod.Average,
             (t) =>
             {
@@ -73,8 +71,7 @@ public class ExampleModel : ModelBase
         );
 
         tpx = new Column("tpx",
-            context.Projection.T_Min,
-            context.Projection.T_Max,
+            context,
             AggregationMethod.Average,
             (t) =>
             {
@@ -84,8 +81,7 @@ public class ExampleModel : ModelBase
         );
 
         discount_rate = new Column("discount_rate",
-            context.Projection.T_Min,
-            context.Projection.T_Max,
+            context,
             AggregationMethod.Average,
             (t) =>
             {
@@ -96,8 +92,7 @@ public class ExampleModel : ModelBase
         );
 
         discount_factor = new Column("discount_factor",
-            context.Projection.T_Min,
-            context.Projection.T_Max,
+            context,
             AggregationMethod.Average,
             (t) =>
             {
@@ -107,8 +102,7 @@ public class ExampleModel : ModelBase
         );
 
         reserve_per = new Column("reserve_per",
-            context.Projection.T_Min,
-            context.Projection.T_Max,
+            context,
             AggregationMethod.Sum,
             (t) =>
             {
@@ -118,8 +112,7 @@ public class ExampleModel : ModelBase
         );
 
         reserve = new Column("reserve",
-            context.Projection.T_Min,
-            context.Projection.T_Max,
+            context,
             AggregationMethod.Sum,
             (t) =>
             {

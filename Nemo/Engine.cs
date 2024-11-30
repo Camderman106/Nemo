@@ -155,7 +155,7 @@ public class Engine<TModel> where TModel : ModelBase
                 if (BatchCount % 100 == 0)
                 {
                     Console.WriteLine($"Odometer> {BatchCount}| ({Odometer.ElapsedMilliseconds}ms / 100 policies)");
-                    Odometer.Reset();
+                    Odometer.Restart();
                 }
                 instance.Reset();
 
@@ -180,7 +180,7 @@ public class Engine<TModel> where TModel : ModelBase
                 if (BatchCount % 100 == 0)
                 {
                     Console.WriteLine($"Odometer> {BatchCount}| ({Odometer.ElapsedMilliseconds}ms / 100 policies)");
-                    Odometer.Reset();
+                    Odometer.Restart();
                 }
                 instance.Reset();
             }

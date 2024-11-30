@@ -11,11 +11,11 @@ public class Column : IModelComponent
     private readonly int T_min;
     public readonly AggregationMethod Aggregation;
     internal bool IsOutput { get; set; } = false;
-    public Column(string outputName, int t_min, int t_max, AggregationMethod aggregation, Func<int, double> evalFunction)
+    public Column(string outputName, ModelContext context, AggregationMethod aggregation, Func<int, double> evalFunction)
     {
         Name = outputName;
-        T_min = t_min;
-        Values = new ColumnValue[t_max - t_min + 1];
+        T_min = context.Projection.T_Min;
+        Values = new ColumnValue[context.Projection.T_Max - context.Projection.T_Min + 1];
         Aggregation = aggregation;
         EvaluationFunction = evalFunction;
     }

@@ -29,8 +29,7 @@ namespace Nemo.Tests
             AgeAtEntry = new Scalar<double>("AgeAtEntry");
             SumAssured = new Scalar<double>("SumAssured");
             PolTermY = new Scalar<int>("PolTermY");
-            var projection = context.Projection;
-            Age = new Column("Age", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
+            Age = new Column("Age", context, AggregationMethod.Average, (t) =>
             {
                 DateOnly birthDate = DateOnly.Parse(DOB);
                 DateOnly valuationDate = DateOnly.Parse(VALDATE).AddMonths(t);
@@ -51,7 +50,7 @@ namespace Nemo.Tests
             }
             );
 
-            TPX = new Column("TPX", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
+            TPX = new Column("TPX", context, AggregationMethod.Average, (t) =>
             {
                 // Parameters for the survival function
                 const double maxAge = 120.0; // Maximum age, 100% mortality
@@ -72,25 +71,25 @@ namespace Nemo.Tests
                 return Math.Max(0.0, pxFuture / pxCurrent);
             });
 
-            CummulativeTPX = new Column("CummulativeTPX", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
+            CummulativeTPX = new Column("CummulativeTPX", context, AggregationMethod.Average, (t) =>
             {
                 if (t == 0) return 1.0;
                 return CummulativeTPX.At(t - 1) * TPX.At(t);
             });
 
-            DiscountFactors = new Column("Disc_Fac", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
+            DiscountFactors = new Column("Disc_Fac", context, AggregationMethod.Average, (t) =>
             {
                 if (t < 12) return 1.0;
                 return Math.Pow(1 + YieldCurve.LookupDouble([(t / 12).ToString()], "Curve", () => YieldCurve.LookupDouble(["40"], "Curve")) / 100, 1d / 12) - 1;
             });
 
-            CumulativeDiscountFactors = new Column("Cum_Disc_Fac", projection.T_Min, projection.T_Max, AggregationMethod.Average, (t) =>
+            CumulativeDiscountFactors = new Column("Cum_Disc_Fac", context, AggregationMethod.Average, (t) =>
             {
                 if (t == 0) return 1;
                 return CumulativeDiscountFactors.At(t - 1) * (1 + DiscountFactors.At(t));
             });
 
-            Reserve = new Column("Reserve", projection.T_Min, projection.T_Max, AggregationMethod.Sum, (t) =>
+            Reserve = new Column("Reserve", context, AggregationMethod.Sum, (t) =>
             {
                 return SumAssured * 1 / CumulativeDiscountFactors.At(t) * CummulativeTPX.At(t);
             });
@@ -103,7 +102,7 @@ namespace Nemo.Tests
     }
 
     [TestClass]
-    public sealed class TestSimpleModel
+    public sealed class ETESimpleModelTest
     {
         [TestMethod]
         public void TestEndToEnd()
