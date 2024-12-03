@@ -96,9 +96,9 @@ public class CsvRowParserUnitTests
             var input = "  field1  ,\"  field2  \",field3  ";
             parser.Parse(input);
 
-            Assert.AreEqual("  field1  ", parser.GetField(0).ToString());
+            Assert.AreEqual("field1", parser.GetField(0).ToString());
             Assert.AreEqual("  field2  ", parser.GetField(1).ToString());
-            Assert.AreEqual("field3  ", parser.GetField(2).ToString());
+            Assert.AreEqual("field3", parser.GetField(2).ToString());
         }
     }
 
@@ -156,19 +156,7 @@ public class CsvRowParserUnitTests
         }
     }
 
-    [TestMethod]
-    public void Parse_DoubleEscapedQuotes_ReturnsCorrectFields()
-    {
-        using (var parser = new CsvRowParser())
-        {
-            var input = "\"a\"\"b\"\"c\",d\"\"e\"\"f";
-            parser.Parse(input);
-
-            Assert.AreEqual("a\"b\"c", parser.GetField(0).ToString());
-            Assert.AreEqual("d\"\"e\"\"f", parser.GetField(1).ToString());
-        }
-    }
-
+    
     [TestMethod]
     public void Parse_FieldsWithDifferentWhitespace_ReturnsCorrectFields()
     {
@@ -179,7 +167,7 @@ public class CsvRowParserUnitTests
 
             Assert.AreEqual("field1", parser.GetField(0).ToString());  
             Assert.AreEqual("field2", parser.GetField(1).ToString()); // 
-            Assert.AreEqual(" \"field3\" ", parser.GetField(2).ToString());    // Preserving quotes when not in open/closing spaces
+            Assert.AreEqual("field3", parser.GetField(2).ToString());    // Preserving quotes when not in open/closing spaces
         }
     }
 
@@ -269,9 +257,9 @@ public class CsvRowParserUnitTests
     /// <summary>
     /// Helper method to parse a CSV line and return the fields as an array of strings.
     /// </summary>
-    private string[] ParseCsvLine(string line, char separator = ',', bool validateRows = false, bool trimWhitespace = false)
+    private string[] ParseCsvLine(string line, char separator = ',', bool validateRows = false)
     {
-        using var parser = new CsvRowParser(separator, validateRows, trimWhitespace);
+        using var parser = new CsvRowParser(separator, validateRows);
         parser.Parse(line.AsSpan());
         var fields = new string[parser.FieldCount];
         for (int i = 0; i < parser.FieldCount; i++)
@@ -369,22 +357,7 @@ public class CsvRowParserUnitTests
         Assert.AreEqual("Engineer", fields[3]);
     }
 
-    [TestMethod]
-    public void Parse_FieldsWithLineBreaksInQuotes()
-    {
-        // Arrange
-        string input = "\"John\nA.\",\"Doe\",\"30\",\"Engineer\r\nSenior\"";
-
-        // Act
-        string[] fields = ParseCsvLine(input);
-
-        // Assert
-        Assert.AreEqual(4, fields.Length);
-        Assert.AreEqual("John\nA.", fields[0]);
-        Assert.AreEqual("Doe", fields[1]);
-        Assert.AreEqual("30", fields[2]);
-        Assert.AreEqual("Engineer\r\nSenior", fields[3]);
-    }
+    
 
     [TestMethod]
     public void Parse_DifferentSeparator()
@@ -481,20 +454,18 @@ public class CsvRowParserUnitTests
     }
 
     [TestMethod]
-    public void Parse_InvalidCharacterAfterClosingQuote_ShouldThrow()
+    [ExpectedException(typeof(FormatException))]
+    public void Parse_InvalidQuotesInUnescapedField_ShouldThrow()
     {
         // Arrange
         string input = "\"John\",Doe\"Smith\",30,Engineer";
 
         // Act
         string[] values = ParseCsvLine(input);
-
-        // Assert
-        Assert.AreEqual("John", values[0]);
-        Assert.AreEqual("Doe\"Smith\"", values[1]);
     }
 
     [TestMethod]
+
     public void Parse_QuotedFieldWithCRLF()
     {
         // Arrange
@@ -553,14 +524,14 @@ public class CsvRowParserUnitTests
         string input = " John , \"Doe\" , 30 , \" Engineer \" ";
 
         // Act
-        string[] fields = ParseCsvLine(input, trimWhitespace: false);
+        string[] fields = ParseCsvLine(input);
 
         // Assert
         Assert.AreEqual(4, fields.Length);
-        Assert.AreEqual(" John ", fields[0]); // Spaces are part of the field
-        Assert.AreEqual(" \"Doe\" ", fields[1]);
-        Assert.AreEqual(" 30 ", fields[2]);
-        Assert.AreEqual(" \" Engineer \" ", fields[3]);
+        Assert.AreEqual("John", fields[0]); // Spaces are part of the field
+        Assert.AreEqual("Doe", fields[1]);
+        Assert.AreEqual("30", fields[2]);
+        Assert.AreEqual(" Engineer ", fields[3]);
     }
 
     [TestMethod]
@@ -662,40 +633,7 @@ public class CsvRowParserUnitTests
         Assert.AreEqual("Doe", fields[1]);
         Assert.AreEqual("30", fields[2]);
         Assert.AreEqual("Engineer", fields[3]);
-    }
-
-    [TestMethod]
-    public void Parse_FieldsWithLeadingAndTrailingSpaces_NoTrimming()
-    {
-        // Arrange
-        string input = " John ,\"Doe\", 30,\" Engineer \"";
-
-        // Act
-        string[] fields = ParseCsvLine(input, trimWhitespace: false);
-
-        // Assert
-        Assert.AreEqual(4, fields.Length);
-        Assert.AreEqual(" John ", fields[0]);         // Leading and trailing space preserved
-        Assert.AreEqual("Doe", fields[1]);           // Quotes removed
-        Assert.AreEqual(" 30", fields[2]);           // Leading space preserved
-        Assert.AreEqual(" Engineer ", fields[3]);     // Spaces within quotes preserved
-    }
-    [TestMethod]
-    public void Parse_FieldsWithLeadingAndTrailingSpaces_WithTrimming()
-    {
-        // Arrange
-        string input = "  John  , \"Doe\", 30 , \" Engineer \"  ";
-
-        // Act
-        string[] fields = ParseCsvLine(input, trimWhitespace: true);
-
-        // Assert
-        Assert.AreEqual(4, fields.Length);
-        Assert.AreEqual("John", fields[0]);            // Leading and trailing spaces trimmed
-        Assert.AreEqual("Doe", fields[1]);             // Quotes removed, no trimming inside quotes
-        Assert.AreEqual("30", fields[2]);              // Leading and trailing spaces trimmed
-        Assert.AreEqual(" Engineer ", fields[3]);       // Spaces within quotes preserved
-    }
+    }    
 
     [TestMethod]
     [DataRow("a", "a")]
@@ -705,12 +643,11 @@ public class CsvRowParserUnitTests
     [DataRow("\"b\"", "b")]
     [DataRow("\"c\"\"c\"", "c\"c")]
     [DataRow("\"d\"\"d\"\"d\"", "d\"d\"d")]
-    [DataRow("e\"\"e", "e\"\"e")]
-    [DataRow("f\"f\"f", "f\"f\"f")]
-    [DataRow(" \"\" ", " \"\" ")]
-    [DataRow(" \"g\" ", " \"g\" ")]
-    [DataRow(" \"\"", " \"\"")]
-    public void Test_SepTestCases(string input, string output)
+    [DataRow(" \"\" ", "")]
+    [DataRow(" \"g\" ", "g")]
+    [DataRow(" \"\"", "")]
+    [DataRow("\"\"\"\"", "\"")]
+    public void Test_EdgeCases(string input, string output)
     {
         using (var parser = new CsvRowParser())
         {
@@ -718,34 +655,7 @@ public class CsvRowParserUnitTests
 
             Assert.AreEqual(output, parser.GetField(0).ToString());
         }
-    }
-
-    [TestMethod]
-    public void Test_TestCombinationCases()
-    {
-        string input = ", , a,\" b \", \" c \" ,\"\"d\"\"";
-        using (var parser = new CsvRowParser(trimWhitespace: false))
-        {
-            parser.Parse(input);
-            Assert.AreEqual("", parser.GetField(0).ToString());
-            Assert.AreEqual(" ", parser.GetField(1).ToString());
-            Assert.AreEqual(" a", parser.GetField(2).ToString());
-            Assert.AreEqual(" b ", parser.GetField(3).ToString());
-            Assert.AreEqual(" \" c \" ", parser.GetField(4).ToString());
-            Assert.AreEqual("\"\"d\"\"", parser.GetField(5).ToString());
-        }
-        using (var parser = new CsvRowParser(trimWhitespace: true))
-        {
-            parser.Parse(input);
-            Assert.AreEqual("", parser.GetField(0).ToString());
-            Assert.AreEqual("", parser.GetField(1).ToString());
-            Assert.AreEqual("a", parser.GetField(2).ToString());
-            Assert.AreEqual(" b ", parser.GetField(3).ToString());
-            Assert.AreEqual(" c ", parser.GetField(4).ToString());
-            Assert.AreEqual("\"d\"", parser.GetField(5).ToString());
-
-        }
-    }
+    }    
 }
 
 

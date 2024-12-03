@@ -6,38 +6,29 @@ using System.Diagnostics;
 
 public class CsvRowParser : IDisposable
 {
+    public int FieldCount { get; private set; }
+
+    public delegate void ParserStrategy(ReadOnlySpan<char> inputRow);
+    public ParserStrategy Parse;
+
+    private FieldPosition[] fieldPositions;
+    internal char[] chars;
+    private readonly char SEPARATOR;
+    private const char DQUOTE = '"';
+    private int expectedFieldCount = -1;
+
     private enum ParseState
     {
         FIELD_START,
         IN_FIELD_UNQUOTED,
         IN_FIELD_QUOTED,
-        END_OF_QUOTED_FIELD,
+        FIELD_END,
     }
-
-    private struct FieldPosition
+    public enum STRATEGY
     {
-        public int Start;
-        public int Length;
+        STRICT
     }
-
-    private FieldPosition[] fieldPositions;
-    internal char[] chars;
-    private readonly char SEPARATOR;
-    private const char QUOTE = '"';
-    private int expectedFieldCount = -1;
-    public int FieldCount { get; private set; }
-    public bool TrimWhitespace { get; }
-
-    public CsvRowParser(char separator = ',', bool validateRows = false, bool trimWhitespace = false)
-    {
-        fieldPositions = ArrayPool<FieldPosition>.Shared.Rent(16);
-        chars = ArrayPool<char>.Shared.Rent(64);
-        expectedFieldCount = validateRows ? -1 : -2;
-        SEPARATOR = separator;
-        TrimWhitespace = trimWhitespace;
-    }
-
-    public void Parse(ReadOnlySpan<char> inputRow)
+    private void ParseStrict(ReadOnlySpan<char> inputRow)
     {
         // Return previous arrays to the pool
         ArrayPool<FieldPosition>.Shared.Return(fieldPositions, clearArray: true);
@@ -59,35 +50,25 @@ public class CsvRowParser : IDisposable
         {
             char c = inputRow[readPos];
             char next = (readPos + 1 < inputRow.Length) ? inputRow[readPos + 1] : '\0';
-            if (c == '\r' || c == '\n') { throw new FormatException("This parser only handles single rows. Line breaks cannot exist"); }
             switch (state)
             {
                 case ParseState.FIELD_START:
-                    if (TrimWhitespace)
                     {
-                        // Skip leading whitespace outside quotes
-                        while (readPos < inputRow.Length 
-                            && char.IsWhiteSpace(c) 
-                            && c != SEPARATOR)
+                        if (c == '\r' || c == '\n') { throw new FormatException("This parser only handles single rows. Line breaks must be escaped"); }
+                        //RFC defines that we skip whitespace around quotes
+                        if (char.IsWhiteSpace(c) && c != DQUOTE && c != SEPARATOR)
                         {
                             readPos++;
-                            if (readPos < inputRow.Length)
-                                c = inputRow[readPos];
-                            else
-                                break;
+                            break;
                         }
-                    }
 
-                    if (c == SEPARATOR)
-                    {
-                        // Empty field
-                        RecordField(fieldStart, 0);
-                        readPos++;
-                        fieldStart = writePos;
-                    }
-                    else if (c == QUOTE)
-                    {
-                        if(next != QUOTE)
+                        if (c == SEPARATOR)
+                        {   
+                            RecordField(fieldStart, 0);
+                            readPos++;
+                            fieldStart = writePos;
+                        }
+                        else if (c == DQUOTE)
                         {
                             state = ParseState.IN_FIELD_QUOTED;
                             readPos++;
@@ -95,134 +76,112 @@ public class CsvRowParser : IDisposable
                         else
                         {
                             state = ParseState.IN_FIELD_UNQUOTED;
+                            readPos++;
                             chars[writePos++] = c;
-                            readPos+=2;
                         }
-                        
-                    }                                        
-                    else
-                    {
-                        state = ParseState.IN_FIELD_UNQUOTED;
-                        chars[writePos++] = c;
-                        readPos++;
                     }
                     break;
-
                 case ParseState.IN_FIELD_UNQUOTED:
-                    if (c == SEPARATOR)
                     {
-                        // End of unquoted field
-                        int fieldLength = writePos - fieldStart;
-                        if (TrimWhitespace)
+                        if (c == '\r' || c == '\n') { throw new FormatException("This parser only handles single rows. Line breaks must be escaped"); }
+
+                        if (c == SEPARATOR)
                         {
+                            int finalFieldLength = writePos - fieldStart;
                             // Trim trailing whitespace
-                            while (fieldLength > 0 && char.IsWhiteSpace(chars[fieldStart + fieldLength - 1]))
+                            while (finalFieldLength > 0 && char.IsWhiteSpace(chars[fieldStart + finalFieldLength - 1]))
+                                finalFieldLength--;
+                            
+                            RecordField(fieldStart, finalFieldLength);
+                            readPos++;
+                            fieldStart = writePos;
+                            state = ParseState.FIELD_START;
+                        }
+                        else if (c == DQUOTE)
+                        {
+                            throw new FormatException($"RFC4180 dictates fields containing quotes must be enclosed in quotes. '{c}' at position {readPos}");
+                        }
+                        else
+                        {
+                            readPos++;
+                            chars[writePos++] = c;
+                        }
+                    }
+                    break;
+                case ParseState.IN_FIELD_QUOTED:
+                    {
+                        if (c == DQUOTE)
+                        {
+                            if (next == DQUOTE)
                             {
-                                Debug.Assert(chars[fieldStart + fieldLength - 1] != (char)0);
-                                fieldLength--; 
+                                chars[writePos++] = c;
+                                readPos += 2;
+                            }
+                            else
+                            {
+                                state = ParseState.FIELD_END;
+                                readPos++;
                             }
                         }
-                        RecordField(fieldStart, fieldLength);
-                        readPos++;
-                        fieldStart = writePos;
-                        state = ParseState.FIELD_START;
-                    }
-                    else if (c == QUOTE)
-                    {                        
-                        // Escaped quote
-                        chars[writePos++] = QUOTE;
-                        readPos++;                        
-                    }                    
-                    else
-                    {
-                        // Regular character
-                        chars[writePos++] = c;
-                        readPos++;
-                    }
-                    break;
-
-                case ParseState.IN_FIELD_QUOTED:
-                    if (c == QUOTE)
-                    {
-                        if (next == QUOTE)
-                        {
-                            // Escaped quote
-                            chars[writePos++] = QUOTE;
-                            readPos += 2;
-                        }
                         else
                         {
-                            // End of quoted field
-                            state = ParseState.END_OF_QUOTED_FIELD;
                             readPos++;
+                            chars[writePos++] = c;
                         }
                     }
-                    else
-                    {
-                        // Inside quoted field
-                        chars[writePos++] = c;
-                        readPos++;
-                    }
                     break;
-
-                case ParseState.END_OF_QUOTED_FIELD:
-                    if (c == SEPARATOR)
+                case ParseState.FIELD_END:
                     {
-                        // End of quoted field
-                        RecordField(fieldStart, writePos - fieldStart);
-                        readPos++;
-                        fieldStart = writePos;
-                        state = ParseState.FIELD_START;
-                    }
-                    else
-                    {
-                        if(TrimWhitespace && char.IsWhiteSpace(c))
+                        //Should be the end of a quoted field.
+                        //There should only be whitespace or seperator characters next. Else throw. 
+                        //This avoids the need for a trim in this mode
+                        if (char.IsWhiteSpace(c) && c != DQUOTE && c != SEPARATOR)
                         {
                             readPos++;
                         }
-                        // Invalid character after closing quote
+                        else if (c == SEPARATOR)
+                        {
+                            RecordField(fieldStart, writePos - fieldStart);
+                            readPos++;
+                            fieldStart = writePos;
+                            state = ParseState.FIELD_START;
+                        }
                         else
                         {
-                            throw new FormatException($"Invalid character '{c}' after closing quote at position {readPos}");
+                            throw new FormatException($"Unexpected characters after quoted field. '{c}' at position {readPos}");
                         }
                     }
                     break;
-
-                
-                default:
-                    throw new InvalidOperationException($"Unknown parse state: {state}");
             }
         }
-
-        // Handle end of input
         switch (state)
         {
             case ParseState.FIELD_START:
-                RecordField(writePos, 0);                
+                {
+                    RecordField(writePos, 0);
+                }
                 break;
 
             case ParseState.IN_FIELD_UNQUOTED:
-                int finalFieldLength = writePos - fieldStart;
-                if (TrimWhitespace)
                 {
-                    // Trim trailing whitespace
+                    int finalFieldLength = writePos - fieldStart;
                     while (finalFieldLength > 0 && char.IsWhiteSpace(chars[fieldStart + finalFieldLength - 1]))
                         finalFieldLength--;
+                    RecordField(fieldStart, finalFieldLength);
                 }
-                RecordField(fieldStart, finalFieldLength);
                 break;
 
             case ParseState.IN_FIELD_QUOTED:
-                throw new FormatException("Unexpected end of input inside a quoted field");
+                {
+                    throw new FormatException("Unexpected end of input inside a quoted field");
+                }
 
-            case ParseState.END_OF_QUOTED_FIELD:
-                RecordField(fieldStart, writePos - fieldStart);
+            case ParseState.FIELD_END:
+                {
+                    RecordField(fieldStart, writePos - fieldStart);
+                }
                 break;
-                            
-            default:
-                throw new InvalidOperationException($"Unknown parse state at end of input: {state}");
         }
-
         // Handle field count validation
         if (expectedFieldCount == -1)
         {
@@ -234,25 +193,26 @@ public class CsvRowParser : IDisposable
             throw new FormatException($"Row has different number of fields. Expected: {expectedFieldCount}, Actual: {FieldCount}");
         }
     }
+    
+    public CsvRowParser(char separator = ',', bool validateRows = false, STRATEGY strategy = STRATEGY.STRICT)
+    {
+        fieldPositions = ArrayPool<FieldPosition>.Shared.Rent(16);
+        chars = ArrayPool<char>.Shared.Rent(64);
+        expectedFieldCount = validateRows ? -1 : -2;
+        SEPARATOR = separator;
+        Parse = strategy switch { STRATEGY.STRICT => ParseStrict, _ => ParseStrict };
+        Parse = ParseStrict;
+    }
 
+    private struct FieldPosition
+    {
+        public int Start;
+        public int Length;
+    }
     private void RecordField(int start, int length)
     {
-        EnsureFieldCapacity();
         fieldPositions[FieldCount++] = new FieldPosition { Start = start, Length = length };
-    }
-
-    private void EnsureFieldCapacity()
-    {
-        if (FieldCount >= fieldPositions.Length)
-        {
-            // Double the size or set to a minimum size
-            int newSize = fieldPositions.Length == 0 ? 16 : fieldPositions.Length * 2;
-            var newArray = ArrayPool<FieldPosition>.Shared.Rent(newSize);
-            Array.Copy(fieldPositions, newArray, fieldPositions.Length);
-            ArrayPool<FieldPosition>.Shared.Return(fieldPositions, clearArray: true);
-            fieldPositions = newArray;
-        }
-    }
+    }    
 
     public ReadOnlySpan<char> GetField(int index)
     {
