@@ -1,4 +1,5 @@
 ﻿using Nemo.IO.CSV;
+using nietras.SeparatedValues;
 using System.Text;
 
 namespace Nemo.Tests;
@@ -110,13 +111,19 @@ public class CsvRowStreamTests
         {
             // Read first line
             var line1 = csvRowStream.GetLine();
+            Assert.AreEqual(11, csvRowStream.BytePosOfNextLine);
+
             Assert.AreEqual("First Line", line1.ToString());
 
             // Seek to start
             csvRowStream.Seek(0);
+            Assert.AreEqual(0, csvRowStream.BytePosOfNextLine);
+
 
             // Read first line again
             var line1Again = csvRowStream.GetLine();
+            Assert.AreEqual(11, csvRowStream.BytePosOfNextLine);
+
             Assert.AreEqual("First Line", line1Again.ToString());
         }
     }
@@ -129,21 +136,27 @@ public class CsvRowStreamTests
         using (var csvRowStream = new CsvRowStream(stream))
         {
             // Read first two lines
+            Assert.AreEqual(0, csvRowStream.BytePosOfNextLine);
             csvRowStream.GetLine();
+            Assert.AreEqual(6, csvRowStream.BytePosOfNextLine);
             csvRowStream.GetLine();
+            Assert.AreEqual(12, csvRowStream.BytePosOfNextLine);
 
             // Get current stream position
-            long currentPosition = stream.Position;
+            long currentPosition = csvRowStream.BytePosOfNextLine;
 
             // Read third line
             var line3 = csvRowStream.GetLine();
+            Assert.AreEqual(18, csvRowStream.BytePosOfNextLine);
             Assert.AreEqual("Line3", line3.ToString());
 
             // Seek back to the position before reading third line
             csvRowStream.Seek(currentPosition);
+            Assert.AreEqual(12, csvRowStream.BytePosOfNextLine);
 
             // Read third line again
             var line3Again = csvRowStream.GetLine();
+            Assert.AreEqual(18, csvRowStream.BytePosOfNextLine);
             Assert.AreEqual("Line3", line3Again.ToString());
         }
     }
@@ -156,14 +169,18 @@ public class CsvRowStreamTests
         using (var csvRowStream = new CsvRowStream(stream))
         {
             // Read the large line
+            Assert.AreEqual(0, csvRowStream.BytePosOfNextLine);
             var a = csvRowStream.GetLine();
+            Assert.AreEqual(2001, csvRowStream.BytePosOfNextLine);
+
 
             // Get position after large line
             //long positionAfterLargeLine = stream.Position;
-            long positionAfterLargeLine = csvRowStream.LineByteOffset;
+            long positionAfterLargeLine = csvRowStream.BytePosOfNextLine;
 
             // Read next line
             var line2 = csvRowStream.GetLine();
+            Assert.AreEqual(2019, csvRowStream.BytePosOfNextLine);
             Assert.AreEqual("LineAfterLargeLine", line2.ToString());
 
             // Seek back to position after large line
@@ -244,4 +261,5 @@ public class CsvRowStreamTests
         return new MemoryStream(encoding.GetBytes(s));
     }
 }
+
 

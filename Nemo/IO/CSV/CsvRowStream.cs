@@ -1,10 +1,6 @@
-﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
+﻿using System.Buffers;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Nemo.IO.CSV;
 
@@ -15,14 +11,16 @@ public class CsvRowStream : IDisposable
     private char[] chars;
     private int charPos = 0;
     private int charLen = 0;
-    private long byteStartPosition = 0;
-    private long byteEndPosition = 0;
+    private long byteChunkBeginPosition = 0;
+    private long byteChunkEndPosition = 0;
     private Encoding encoding;
     private Decoder decoder;
     private const int InitialBufferSize = 1024;
+    private int byteBufferStartOffset = 0;
     private static readonly Encoding DefaultEncoding = new UTF8Encoding(false);
     //public long EndLineByteOffsetInclusive { get; private set; } = 0;
 
+    
     public CsvRowStream(Stream stream)
     {
         this.stream = stream;
@@ -31,9 +29,11 @@ public class CsvRowStream : IDisposable
         encoding = DetectEncoding(stream, DefaultEncoding);
         //EndLineByteOffsetInclusive = -1;
         decoder = encoding.GetDecoder();
-        byteStartPosition = stream.Position;
-        byteEndPosition = stream.Position;
-        Debug.Assert(byteStartPosition == 0);
+        BytePosOfNextLine = stream.Position;
+        BytePosOfCurrLine = BytePosOfNextLine;
+        byteChunkBeginPosition = stream.Position;
+        byteChunkEndPosition = stream.Position;
+        Debug.Assert(byteChunkBeginPosition == 0);
     }
 
     public void Seek(long byteOffset)
@@ -41,26 +41,28 @@ public class CsvRowStream : IDisposable
         // Validate the byteOffset
         if (byteOffset < 0 || byteOffset > stream.Length)
             throw new ArgumentOutOfRangeException(nameof(byteOffset));
-        if (byteOffset >= byteStartPosition && byteOffset < byteEndPosition)
+        BytePosOfNextLine = byteOffset;
+        BytePosOfCurrLine = byteOffset;
+        if (byteOffset >= byteChunkBeginPosition && byteOffset < byteChunkEndPosition)
         {
             // The desired position is within the current byte buffer
             // Adjust positions and re-decode if necessary
-            int byteOffsetInBuffer = (int)(byteOffset - byteStartPosition);
+            int byteOffsetInBuffer = (int)(byteOffset - byteChunkBeginPosition);
 
             // Reset decoder
             decoder.Reset();
 
             // Re-decode bytes from byteOffsetInBuffer
             charPos = 0;
-            charLen = decoder.GetChars(bytes, byteOffsetInBuffer, (int)(byteEndPosition - byteOffset), chars, 0);
+            charLen = decoder.GetChars(bytes, byteOffsetInBuffer, (int)(byteChunkEndPosition - byteOffset), chars, 0);
         }
         else
         {
             // The desired position is outside the current buffer
             // Seek the stream and reset buffers
             stream.Seek(byteOffset, SeekOrigin.Begin);
-            byteStartPosition = byteOffset;
-            byteEndPosition = byteOffset;
+            byteChunkBeginPosition = byteOffset;
+            byteChunkEndPosition = byteOffset;
 
 
             // Reset decoder and buffers
@@ -84,11 +86,12 @@ public class CsvRowStream : IDisposable
         }
         return -1;
     }
-
-
-    private long _bytePosOfNextLine = -1;
+    private long BytePosOfCurrLine;
+    public long BytePosOfNextLine { get; private set; }
     public ReadOnlySpan<char> GetLine()
     {
+        BytePosOfCurrLine = BytePosOfNextLine;
+        
         while (true)
         {
             // Search for newline characters in chars[] from charPos to charLen
@@ -97,63 +100,37 @@ public class CsvRowStream : IDisposable
             if (newLinePos >= 0)
             {
                 // Newline found
-                int lineLength = newLinePos - charPos;
-                int charPosCurrent = charPos;
-                ReadOnlySpan<char> line = new ReadOnlySpan<char>(chars, charPosCurrent, lineLength);
+                int lineStart = charPos;
+                int lineLength = newLinePos - lineStart;
+                ReadOnlySpan<char> line = new ReadOnlySpan<char>(chars, lineStart, lineLength);
                 
                 // Advance charPos past the newline character(s)
                 charPos = newLinePos + 1;
-                lineLength++;
 
                 // Handle '\r\n' by checking if the next character is '\n'
                 if (chars[newLinePos] == '\r' && charPos < charLen && chars[charPos] == '\n')
                 {
                     charPos++;
-                    lineLength++;
                 }
 
+                BytePosOfNextLine = BytePosOfCurrLine + encoding.GetByteCount(new ReadOnlySpan<char>(chars, lineStart, charPos - lineStart));
                 return line;
             }
-
-            // If we have reached the end of the buffer, load more data
-            if (charPos >= charLen)
+            if (LoadNextChunk() == 0)
             {
-                if (LoadNextChunk() == 0)
+                // End of file
+                if (charPos < charLen)
                 {
-                    // End of file
-                    if (charPos < charLen)
-                    {
-                        // Return remaining data as the last line
-                        ReadOnlySpan<char> line = new ReadOnlySpan<char>(chars, charPos, charLen - charPos);
-                        charPos = charLen;
-                        return line;
-                    }
-                    else
-                    {
-                        // No more data
-                        return ReadOnlySpan<char>.Empty;
-                    }
+                    // Return remaining data as the last line
+                    ReadOnlySpan<char> line = new ReadOnlySpan<char>(chars, charPos, charLen - charPos);
+                    BytePosOfNextLine = BytePosOfCurrLine + encoding.GetByteCount(line);
+                    charPos = charLen;
+                    return line;
                 }
-            }
-            else
-            {
-                // No newline found, but there is still data in the buffer
-                // Need to load more data and continue searching
-                if (LoadNextChunk() == 0)
+                else
                 {
-                    // End of file
-                    if (charPos < charLen)
-                    {
-                        // Return remaining data as the last line
-                        ReadOnlySpan<char> line = new ReadOnlySpan<char>(chars, charPos, charLen - charPos);
-                        charPos = charLen;
-                        return line;
-                    }
-                    else
-                    {
-                        // No more data
-                        return ReadOnlySpan<char>.Empty;
-                    }
+                    // No more data
+                    return ReadOnlySpan<char>.Empty;
                 }
             }
         }
@@ -172,8 +149,8 @@ public class CsvRowStream : IDisposable
 
         // Read bytes from the stream
         int bytesRead = stream.Read(bytes, 0, bytes.Length);
-        byteStartPosition = stream.Position - bytesRead;
-        byteEndPosition = stream.Position;
+        byteChunkBeginPosition = stream.Position - bytesRead;
+        byteChunkEndPosition = stream.Position;
 
         if (bytesRead == 0)
         {
