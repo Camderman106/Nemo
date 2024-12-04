@@ -13,7 +13,7 @@ public class CsvRowStreamTests
         using (var stream = new MemoryStream())
         using (var csvRowStream = new CsvRowStream(stream))
         {
-            var line = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line);
             Assert.IsTrue(line.IsEmpty, "Line should be empty for an empty file.");
         }
     }
@@ -27,10 +27,10 @@ public class CsvRowStreamTests
         {
             for (int i = 0; i < 3; i++)
             {
-                var line = csvRowStream.GetLine();
+                csvRowStream.GetLine(out var line);
                 Assert.IsTrue(line.IsEmpty, $"Line {i} should be empty.");
             }
-            var endLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var endLine);    
             Assert.IsTrue(endLine.IsEmpty, "Should return empty span at EOF.");
         }
     }
@@ -42,9 +42,9 @@ public class CsvRowStreamTests
         using (var stream = GenerateStreamFromString(content))
         using (var csvRowStream = new CsvRowStream(stream))
         {
-            var line = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line);
             Assert.AreEqual(content, line.ToString());
-            var endLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var endLine);
             Assert.IsTrue(endLine.IsEmpty, "Should return empty span at EOF.");
         }
     }
@@ -61,10 +61,10 @@ public class CsvRowStreamTests
             var expectedLines = new[] { "Line1", "Line2", "Line3" };
             foreach (var expected in expectedLines)
             {
-                var line = csvRowStream.GetLine();
+                csvRowStream.GetLine(out var line);
                 Assert.AreEqual(expected, line.ToString());
             }
-            var endLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var endLine);
             Assert.IsTrue(endLine.IsEmpty, "Should return empty span at EOF.");
         }
     }
@@ -77,11 +77,11 @@ public class CsvRowStreamTests
         using (var stream = GenerateStreamFromString(content))
         using (var csvRowStream = new CsvRowStream(stream))
         {
-            var line1 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line1);
             Assert.AreEqual(largeLine, line1.ToString());
-            var line2 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line2);
             Assert.AreEqual("SecondLine", line2.ToString());
-            var endLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var endLine);
             Assert.IsTrue(endLine.IsEmpty, "Should return empty span at EOF.");
         }
     }
@@ -93,11 +93,11 @@ public class CsvRowStreamTests
         using (var stream = GenerateStreamFromString(content, Encoding.UTF8))
         using (var csvRowStream = new CsvRowStream(stream))
         {
-            var line1 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line1);
             Assert.AreEqual("Line with emoji 😀", line1.ToString());
-            var line2 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line2);
             Assert.AreEqual("Another line with emoji 😃", line2.ToString());
-            var endLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var endLine);
             Assert.IsTrue(endLine.IsEmpty, "Should return empty span at EOF.");
         }
     }
@@ -110,7 +110,7 @@ public class CsvRowStreamTests
         using (var csvRowStream = new CsvRowStream(stream))
         {
             // Read first line
-            var line1 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line1);
             Assert.AreEqual(11, csvRowStream.BytePosOfNextLine);
 
             Assert.AreEqual("First Line", line1.ToString());
@@ -121,7 +121,7 @@ public class CsvRowStreamTests
 
 
             // Read first line again
-            var line1Again = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line1Again);
             Assert.AreEqual(11, csvRowStream.BytePosOfNextLine);
 
             Assert.AreEqual("First Line", line1Again.ToString());
@@ -137,16 +137,16 @@ public class CsvRowStreamTests
         {
             // Read first two lines
             Assert.AreEqual(0, csvRowStream.BytePosOfNextLine);
-            csvRowStream.GetLine();
+            csvRowStream.GetLine(out var _);
             Assert.AreEqual(6, csvRowStream.BytePosOfNextLine);
-            csvRowStream.GetLine();
+            csvRowStream.GetLine(out var _);
             Assert.AreEqual(12, csvRowStream.BytePosOfNextLine);
 
             // Get current stream position
             long currentPosition = csvRowStream.BytePosOfNextLine;
 
             // Read third line
-            var line3 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line3);
             Assert.AreEqual(18, csvRowStream.BytePosOfNextLine);
             Assert.AreEqual("Line3", line3.ToString());
 
@@ -155,7 +155,7 @@ public class CsvRowStreamTests
             Assert.AreEqual(12, csvRowStream.BytePosOfNextLine);
 
             // Read third line again
-            var line3Again = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line3Again);
             Assert.AreEqual(18, csvRowStream.BytePosOfNextLine);
             Assert.AreEqual("Line3", line3Again.ToString());
         }
@@ -170,7 +170,7 @@ public class CsvRowStreamTests
         {
             // Read the large line
             Assert.AreEqual(0, csvRowStream.BytePosOfNextLine);
-            var a = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var a);
             Assert.AreEqual(2001, csvRowStream.BytePosOfNextLine);
 
 
@@ -179,7 +179,7 @@ public class CsvRowStreamTests
             long positionAfterLargeLine = csvRowStream.BytePosOfNextLine;
 
             // Read next line
-            var line2 = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line2);
             Assert.AreEqual(2019, csvRowStream.BytePosOfNextLine);
             Assert.AreEqual("LineAfterLargeLine", line2.ToString());
 
@@ -187,7 +187,7 @@ public class CsvRowStreamTests
             csvRowStream.Seek(positionAfterLargeLine);
 
             // Read the line again
-            var line2Again = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line2Again);
             Assert.AreEqual("LineAfterLargeLine", line2Again.ToString());
         }
     }
@@ -199,14 +199,14 @@ public class CsvRowStreamTests
         using (var stream = GenerateStreamFromString(content))
         using (var csvRowStream = new CsvRowStream(stream))
         {
-            var line = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line);
             Assert.AreEqual("Last Line", line.ToString());
 
-            var endLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var endLine);
             Assert.IsTrue(endLine.IsEmpty, "Should return empty span at EOF.");
 
             // Try reading again
-            var anotherEndLine = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var anotherEndLine);
             Assert.IsTrue(anotherEndLine.IsEmpty, "Should consistently return empty span at EOF.");
         }
     }
@@ -219,7 +219,7 @@ public class CsvRowStreamTests
         using (var stream = GenerateStreamFromString(content, utf8Bom))
         using (var csvRowStream = new CsvRowStream(stream))
         {
-            var line = csvRowStream.GetLine();
+            csvRowStream.GetLine(out var line);
             Assert.AreEqual("Line with BOM", line.ToString());
         }
     }
@@ -232,8 +232,8 @@ public class CsvRowStreamTests
         using (var csvRowStream = new CsvRowStream(stream))
         {
             // Read first two lines
-            csvRowStream.GetLine();
-            csvRowStream.GetLine();
+            csvRowStream.GetLine(out var _);
+            csvRowStream.GetLine(out var _);
 
             // Seek to start
             csvRowStream.Seek(0);
@@ -242,7 +242,7 @@ public class CsvRowStreamTests
             var lines = new string[5];
             for (int i = 0; i < 5; i++)
             {
-                var line = csvRowStream.GetLine();
+                csvRowStream.GetLine(out var line);
                 lines[i] = line.ToString();
             }
 

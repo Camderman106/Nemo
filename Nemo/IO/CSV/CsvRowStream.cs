@@ -20,7 +20,21 @@ public class CsvRowStream : IDisposable
     private static readonly Encoding DefaultEncoding = new UTF8Encoding(false);
     //public long EndLineByteOffsetInclusive { get; private set; } = 0;
 
-    
+    public CsvRowStream(CSVSource source)
+    {
+        this.stream = new FileStream(source.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        bytes = ArrayPool<byte>.Shared.Rent(InitialBufferSize);
+        chars = ArrayPool<char>.Shared.Rent(InitialBufferSize);
+        encoding = DetectEncoding(stream, DefaultEncoding);
+        //EndLineByteOffsetInclusive = -1;
+        decoder = encoding.GetDecoder();
+        BytePosOfNextLine = stream.Position;
+        BytePosOfCurrLine = BytePosOfNextLine;
+        byteChunkBeginPosition = stream.Position;
+        byteChunkEndPosition = stream.Position;
+        Debug.Assert(byteChunkBeginPosition == 0);
+    }
+
     public CsvRowStream(Stream stream)
     {
         this.stream = stream;
@@ -38,6 +52,7 @@ public class CsvRowStream : IDisposable
 
     public void Seek(long byteOffset)
     {
+        byteOffset = Math.Max(byteOffset, encoding.Preamble.Length);
         // Validate the byteOffset
         if (byteOffset < 0 || byteOffset > stream.Length)
             throw new ArgumentOutOfRangeException(nameof(byteOffset));
@@ -86,9 +101,16 @@ public class CsvRowStream : IDisposable
         }
         return -1;
     }
-    private long BytePosOfCurrLine;
+    public long BytePosOfCurrLine { get; private set; }
     public long BytePosOfNextLine { get; private set; }
-    public ReadOnlySpan<char> GetLine()
+    //public IEnumerable<ReadOnlySpan<char>> EnumerateFromPosition()
+    //{
+    //    while (!EOFFlag)
+    //    {
+    //        yield return GetLine();
+    //    }
+    //}
+    public bool GetLine(out ReadOnlySpan<char> result)
     {
         BytePosOfCurrLine = BytePosOfNextLine;
         
@@ -114,7 +136,8 @@ public class CsvRowStream : IDisposable
                 }
 
                 BytePosOfNextLine = BytePosOfCurrLine + encoding.GetByteCount(new ReadOnlySpan<char>(chars, lineStart, charPos - lineStart));
-                return line;
+                result = line;
+                return true;
             }
             if (LoadNextChunk() == 0)
             {
@@ -125,12 +148,14 @@ public class CsvRowStream : IDisposable
                     ReadOnlySpan<char> line = new ReadOnlySpan<char>(chars, charPos, charLen - charPos);
                     BytePosOfNextLine = BytePosOfCurrLine + encoding.GetByteCount(line);
                     charPos = charLen;
-                    return line;
+                    result = line;
+                    return false;
                 }
                 else
                 {
                     // No more data
-                    return ReadOnlySpan<char>.Empty;
+                    result = ReadOnlySpan<char>.Empty;
+                    return false;
                 }
             }
         }

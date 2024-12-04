@@ -1,11 +1,7 @@
 ﻿using nietras.SeparatedValues;
-using System;
-using System.Collections.Frozen;
 using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
-namespace Nemo.IO;
+namespace Nemo.IO.Nietras;
 
 public class Table
 {
@@ -37,7 +33,7 @@ public class Table
             CSVSource = source;
             OffsetMap = offsetMap;
             HasHeaders = hasHeaders;
-            StreamReader = new StreamReader(new FileStream(CSVSource.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, LookupBufferSize));            
+            StreamReader = new StreamReader(new FileStream(CSVSource.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, LookupBufferSize));
             SepReader = Sep.Auto.Reader(o => (o with { HasHeader = hasHeaders })).From(StreamReader);
             ColumnIndexMap = Enumerable.Range(0, SepReader.Header.ColNames.Count).Select(x => new KeyValuePair<string, int>(SepReader.Header.ColNames[x], x)).ToDictionary();
             ColumnCount = SepReader.Header.ColNames.Count;
@@ -141,7 +137,7 @@ public class Table
                 throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
-        
+
         public double LookupDouble(int index, ColumnIndex returnColumn)
         {
             if (OffsetMap.TryGetValue(index, out long offset))
@@ -155,7 +151,7 @@ public class Table
                 throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with index: {index}");
             }
         }
-        
+
         public int LookupInt(int index, ColumnIndex returnColumn)
         {
             if (OffsetMap.TryGetValue(index, out long offset))
@@ -171,7 +167,7 @@ public class Table
         }
         #endregion
     }
-    public class ColumnIndexed: IDisposable
+    public class ColumnIndexed : IDisposable
     {
         public void Dispose()
         {
@@ -373,7 +369,7 @@ public class Table
     }
     public ColumnIndexed IndexByColumns(ColumnIndex[] indexByColumns)
     {
-        var offsetMap = CreateIndexByColumns(indexByColumns.Select(x=>(int)x).ToArray());
+        var offsetMap = CreateIndexByColumns(indexByColumns.Select(x => (int)x).ToArray());
         return new ColumnIndexed(CSVSource, offsetMap);
     }
     public Sequential IndexByRowIndex(bool hasHeader)
@@ -510,7 +506,7 @@ public class Table
             if (index < 0)
                 throw new ArgumentOutOfRangeException(nameof(index), "ColumnIndex must start at 1.");
             _index = index;
-        }        
+        }
         // Implicit conversion from int to ColumnIndex
         public static implicit operator ColumnIndex(int index) => new ColumnIndex(index - 1);
         // Implicit conversion from ColumnIndex to int

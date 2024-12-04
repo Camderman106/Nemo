@@ -1,5 +1,6 @@
 ﻿using Nemo.IO;
 using System.Runtime.CompilerServices;
+using Table = Nemo.IO.Nietras.Table;
 
 namespace Nemo.Tests;
 

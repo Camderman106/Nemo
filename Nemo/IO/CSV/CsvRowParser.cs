@@ -3,6 +3,7 @@
 using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 public class CsvRowParser : IDisposable
 {
@@ -200,8 +201,7 @@ public class CsvRowParser : IDisposable
         chars = ArrayPool<char>.Shared.Rent(64);
         expectedFieldCount = validateRows ? -1 : -2;
         SEPARATOR = separator;
-        Parse = strategy switch { STRATEGY.STRICT => ParseStrict, _ => ParseStrict };
-        Parse = ParseStrict;
+        Parse = strategy switch { STRATEGY.STRICT => ParseStrict, _ => ParseStrict };        
     }
 
     private struct FieldPosition
@@ -213,6 +213,11 @@ public class CsvRowParser : IDisposable
     {
         fieldPositions[FieldCount++] = new FieldPosition { Start = start, Length = length };
     }    
+    public ReadOnlySpan<char> this[int i]
+    {
+        get { return GetField(i); }
+    }
+       
 
     public ReadOnlySpan<char> GetField(int index)
     {
@@ -223,6 +228,15 @@ public class CsvRowParser : IDisposable
 
         var fieldPos = fieldPositions[index];
         return chars.AsSpan(fieldPos.Start, fieldPos.Length);
+    }
+    public string[] ToArray()
+    {
+        string[] result = new string[FieldCount];
+        for(int i = 0; i<FieldCount; i++)
+        {
+            result[i] = GetField(i).ToString();
+        }
+        return result;
     }
 
     public void Dispose()

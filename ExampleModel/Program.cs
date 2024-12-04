@@ -3,6 +3,7 @@ using Nemo;
 using Nemo.IO;
 using Nemo.Model;
 using Nemo.Model.Components;
+using Table = Nemo.IO.CSV.Table;
 
 namespace ExampleModel;
 public class ExampleModel : ModelBase
@@ -10,7 +11,7 @@ public class ExampleModel : ModelBase
     public static void Main()
     {
         var job = new ModelContext(
-            "Example", 
+            "ExampleCustomCsv", 
             Directory.GetCurrentDirectory(), 
             new Projection(0,0,120,120), 
             new OutputSet(),
