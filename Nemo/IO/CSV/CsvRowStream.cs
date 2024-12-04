@@ -32,7 +32,6 @@ public class CsvRowStream : IDisposable
         BytePosOfCurrLine = BytePosOfNextLine;
         byteChunkBeginPosition = stream.Position;
         byteChunkEndPosition = stream.Position;
-        Debug.Assert(byteChunkBeginPosition == 0);
     }
 
     public CsvRowStream(Stream stream)
@@ -47,7 +46,6 @@ public class CsvRowStream : IDisposable
         BytePosOfCurrLine = BytePosOfNextLine;
         byteChunkBeginPosition = stream.Position;
         byteChunkEndPosition = stream.Position;
-        Debug.Assert(byteChunkBeginPosition == 0);
     }
 
     public void Seek(long byteOffset)

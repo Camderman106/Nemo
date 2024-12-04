@@ -421,8 +421,7 @@ public class Table
         rowParser.Parse(row);
         var headers = rowParser.ToArray().ToList();
         int[] indexes = columnHeadersToIndex.Select(x => headers.IndexOf(x)).ToArray();
-        Debug.Assert(indexes.All(x => x > 0));
-        rowStream.Seek(0);
+        Debug.Assert(indexes.All(x => x >= 0));
         while (rowStream.GetLine(out row))
         {
             rowParser.Parse(row);
@@ -473,9 +472,10 @@ public class Table
         {
             rowStream.Seek(0);//if there is no header then we need to move back to the top
         }
-        int rowIndex = 1;
+        int rowIndex = 0;
         while (rowStream.GetLine(out row))
         {
+            rowIndex++;
             RowPositions[rowIndex] = rowStream.BytePosOfCurrLine;
         }
         return RowPositions;
