@@ -1,14 +1,7 @@
 ﻿using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Bibliography;
-using DocumentFormat.OpenXml.Packaging;
-using Nemo.Model;
 using nietras.SeparatedValues;
-using System;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
-
-
 namespace Nemo.IO;
 
 public class SourceManager

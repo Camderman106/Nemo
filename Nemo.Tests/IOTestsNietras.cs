@@ -1,5 +1,5 @@
 ﻿using Nemo.IO;
-using Table = Nemo.IO.Nietras.Table;
+using Table = Nemo.IO.CSV.Table;
 
 namespace Nemo.Tests;
 

@@ -6,7 +6,7 @@ public class Program
 {
     public static void Main()
     {
-        IOTests iOTests = new IOTests();
+        IOTestsCsv iOTests = new();
         iOTests.TestLookupsPerformance();
     }
 }
