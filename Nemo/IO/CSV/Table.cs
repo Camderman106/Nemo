@@ -495,8 +495,12 @@ public class Table
         string[] header = rowParser.ToArray();
         IReadOnlyDictionary<string, int> headerIndex = header.Zip(Enumerable.Range(0, header.Length)).ToDictionary(x => x.First, x => x.Second);
         int rowIndex = 0;
-        while (rowStream.GetLine(out row))
+        bool morerows = true;
+        while (morerows)
         {
+            morerows = rowStream.GetLine(out row);
+            if (!morerows && row.IsEmpty) 
+                break; //filter out an empty final row
             rowIndex++;
             rowParser.Parse(row);
             yield return new TableRecord(rowIndex, rowParser.ToArray(), headerIndex);

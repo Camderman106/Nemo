@@ -11,7 +11,7 @@ public class ExampleModel : ModelBase
     public static void Main()
     {
         var job = new ModelContext(
-            "ExampleCustomCsv", 
+            "ExampleNeitras", 
             Directory.GetCurrentDirectory(), 
             new Projection(0,0,120,120), 
             new OutputSet(),

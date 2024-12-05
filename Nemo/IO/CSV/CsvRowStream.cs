@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Nemo.IO.CSV;
@@ -48,6 +49,8 @@ public class CsvRowStream : IDisposable
         byteChunkEndPosition = stream.Position;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+
     public void Seek(long byteOffset)
     {
         byteOffset = Math.Max(byteOffset, encoding.Preamble.Length);
@@ -87,7 +90,10 @@ public class CsvRowStream : IDisposable
             LoadNextChunk();
         }
     }
-        
+
+    
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+
     private static int FindNewLine(char[] buffer, int startPos, int endPos)
     {
         for (int i = startPos; i < endPos; i++)
@@ -108,6 +114,7 @@ public class CsvRowStream : IDisposable
     //        yield return GetLine();
     //    }
     //}
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public bool GetLine(out ReadOnlySpan<char> result)
     {
         BytePosOfCurrLine = BytePosOfNextLine;
@@ -132,6 +139,7 @@ public class CsvRowStream : IDisposable
                 {
                     charPos++;
                 }
+                //If this is in a power of 2 position, and the next character is /0 then the /n might be the first byte in the next chunk. Handle this case in the LoadNextChunk function later
 
                 BytePosOfNextLine = BytePosOfCurrLine + encoding.GetByteCount(new ReadOnlySpan<char>(chars, lineStart, charPos - lineStart));
                 result = line;
@@ -158,7 +166,7 @@ public class CsvRowStream : IDisposable
             }
         }
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private int LoadNextChunk()
     {
         // Shift the buffer if necessary
@@ -192,6 +200,21 @@ public class CsvRowStream : IDisposable
 
         int charsDecoded = decoder.GetChars(bytes, 0, bytesRead, chars, charLen);
         charLen += charsDecoded;
+
+        //This handles the possibility that either the first one or two characters from the new chunk are the newline characters
+        //We just skip up to twice and adjust the byte position variable appropriately
+        //Note that the current position is only set once at the start of any Getline instance so is effectively constant. We only need to ensure the Next position is correct
+        if (chars[charPos] == '\r' || chars[charPos] == '\n')
+        {
+            charPos++;
+            BytePosOfNextLine += encoding.GetByteCount(chars, charPos, 1);
+        }
+        //I actually think we only ever need one of these as if both characters are in the next chunk then then line wont have been cut out yet. 
+        //if (chars[charPos] == '\r' || chars[charPos] == '\n')
+        //{
+        //    charPos++;
+        //    BytePosOfNextLine += encoding.GetByteCount(chars, charPos, 1);
+        //}
 
         return charsDecoded;
     }

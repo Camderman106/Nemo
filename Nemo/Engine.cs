@@ -3,7 +3,7 @@ using Nemo.Model;
 using Nemo.Model.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Table = Nemo.IO.Nietras.Table;
+using Table = Nemo.IO.CSV.Table;
 
 namespace Nemo;
 
@@ -132,7 +132,7 @@ public class Engine<TModel> where TModel : ModelBase
         {
             if (records.First().ContainsKey(GroupBy))
             {
-                group = records.First()[GroupBy];
+                group = records.First()[GroupBy];                
             }
             else
             {
