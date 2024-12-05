@@ -31,14 +31,19 @@ public class CsvRowParser : IDisposable
     }
     private void ParseStrict(ReadOnlySpan<char> inputRow)
     {
-        // Return previous arrays to the pool
-        ArrayPool<FieldPosition>.Shared.Return(fieldPositions, clearArray: true);
-        ArrayPool<char>.Shared.Return(chars, clearArray: false);
-
-        // Rent new arrays based on input size
         int charsLength = inputRow.Length > 0 ? inputRow.Length : 64;
-        chars = ArrayPool<char>.Shared.Rent(charsLength);
-        fieldPositions = ArrayPool<FieldPosition>.Shared.Rent(inputRow.Length + 1); // +1 for potential empty field
+
+        // Ensure char[] is sufficiently large using known upper bound inputRow.Length
+        if (charsLength > chars.Length)
+        {
+            ArrayPool<char>.Shared.Return(chars, clearArray: true);
+            chars = ArrayPool<char>.Shared.Rent(charsLength);
+        }
+        //else reuse the existing char array
+
+        //Fild position length managed by EnsureFieldCapacity function
+        Array.Clear(fieldPositions);
+        
         FieldCount = 0;
 
         int readPos = 0;
@@ -191,7 +196,7 @@ public class CsvRowParser : IDisposable
         }
         else if (expectedFieldCount >= 0 && FieldCount != expectedFieldCount)
         {
-            throw new FormatException($"Row has different number of fields. Expected: {expectedFieldCount}, Actual: {FieldCount}");
+            throw new FormatException($"Row Validation: Row has different number of fields. Expected: {expectedFieldCount}, Actual: {FieldCount}");
         }
     }
     
@@ -211,8 +216,21 @@ public class CsvRowParser : IDisposable
     }
     private void RecordField(int start, int length)
     {
+        if (expectedFieldCount > 0 && FieldCount > expectedFieldCount) throw new FormatException($"Row Validation: Row has too many fields. Expected: {expectedFieldCount} fields, but another field found at position {start}");
+        EnsureFieldCapacity();
         fieldPositions[FieldCount++] = new FieldPosition { Start = start, Length = length };
     }    
+
+    private void EnsureFieldCapacity()
+    {
+        if (FieldCount >= fieldPositions.Length)
+        {
+            var newfields  = ArrayPool<FieldPosition>.Shared.Rent(FieldCount * 2);
+            fieldPositions.CopyTo(newfields,0);
+            ArrayPool<FieldPosition>.Shared.Return(fieldPositions);
+            fieldPositions = newfields;
+        }
+    }
     public ReadOnlySpan<char> this[int i]
     {
         get { return GetField(i); }
