@@ -28,6 +28,7 @@ public class SourceManager
         CsvSourceData.Add(sourceNameId, csvFilePath);
         return this;
     }
+
     public SourceManager AddCSVSource(string sourceNameId, CSVSource csvSource)
     {
         if (sourceNameId is null) throw new ArgumentNullException(nameof(sourceNameId));

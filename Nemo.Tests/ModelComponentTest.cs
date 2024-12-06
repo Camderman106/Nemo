@@ -10,7 +10,7 @@ namespace Nemo.Tests
         public void ColumnTests()
         {
             ModelContext context = new("", "", new Projection(0, 0, 10, 10), new OutputSet(), new SourceManager());
-            Column column = new Column("test", context, AggregationMethod.Sum,(int t) => 10);
+            Column column = new Column(null, "test", context, AggregationMethod.Sum,(int t) => 10);
             column.Values = Enumerable.Repeat(5, 10).Select(x => new ColumnValue() { State = ColumnValueState.Calculated, Value = x }).ToArray();
             column.Values[5].State = ColumnValueState.Uncalculated;
             column.Values[6].State = ColumnValueState.ZeroNoAverage;

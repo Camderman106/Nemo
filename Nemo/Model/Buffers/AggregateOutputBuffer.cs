@@ -66,7 +66,7 @@ internal class AggregateOutputBuffer
 
             foreach (var buffer in buffers)
             {
-                for (int t = job.Projection.T_Start; t < job.Projection.T_End; t++)
+                for (int t = job.Projection.T_Start; t <= job.Projection.T_End; t++)
                 {
                     int offset = t - job.Projection.T_Min;
                     string line = $"{buffer.ModelClass},{buffer.Group},{t},{string.Join(',', buffer.ColumnBuffers.Select(x => x.OutputValue(offset)))}";

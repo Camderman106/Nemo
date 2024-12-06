@@ -11,9 +11,9 @@ public class ExampleModel : ModelBase
     public static void Main()
     {
         var job = new ModelContext(
-            "ExampleNeitras", 
-            Directory.GetCurrentDirectory(), 
-            new Projection(0,0,120,120), 
+            "Example10k",
+            Directory.GetCurrentDirectory(),
+            new Projection(0, 0, 120, 120),
             new OutputSet(),
             new SourceManager()
             .SetDataSource("Inputs\\ExampleData10k.csv")
@@ -21,6 +21,29 @@ public class ExampleModel : ModelBase
             .AddExcelSource("AFC00", "Inputs\\AFC00.xlsx", "AFC00", "A3:D108")
             .AddExcelSource("AMC00", "Inputs\\AMC00.xlsx", "AMC00", "A3:D108")
             );
+        //var job = new ModelContext(
+        //    "ExampleReference",
+        //    Directory.GetCurrentDirectory(),
+        //    new Projection(0, 0, 120, 120),
+        //    new OutputSet(),
+        //    new SourceManager()
+        //    .SetDataSource("Inputs\\ExampleDataTraceTest.csv")
+        //    .AddCSVSource("DiscountCurve", "Inputs\\SpotRates.csv")
+        //    .AddExcelSource("AFC00", "Inputs\\AFC00.xlsx", "AFC00", "A3:D108")
+        //    .AddExcelSource("AMC00", "Inputs\\AMC00.xlsx", "AMC00", "A3:D108")
+        //    );
+        //var job = new ModelContext(
+        //    "ExampleTrace",
+        //    Directory.GetCurrentDirectory(),
+        //    new Projection(0, 0, 120, 120),
+        //    new OutputSet(),
+        //    new SourceManager()
+        //    .SetDataSource("Inputs\\ExampleDataTraceTest.csv")
+        //    .AddCSVSource("DiscountCurve", "Inputs\\SpotRates.csv")
+        //    .AddExcelSource("AFC00", "Inputs\\AFC00.xlsx", "AFC00", "A3:D108")
+        //    .AddExcelSource("AMC00", "Inputs\\AMC00.xlsx", "AMC00", "A3:D108")
+        //    )
+        //    .SetTraceTable("ExampleReference-ExampleModel.csv");
 
         var engine = new Engine<ExampleModel>((x) => new ExampleModel(x)).GroupRecordsBy("GROUP");
         engine.Execute(job);
@@ -48,13 +71,15 @@ public class ExampleModel : ModelBase
         AFC00 = Table.From(context.Sources.Tables["AFC00"]).IndexByColumns(["Age x"]);
         Spots = Table.From(context.Sources.Tables["DiscountCurve"]).IndexByColumns(["Time"]);
 
-        age = new Column("age", 
+        age = new Column(this,
+            "age", 
             context,
             AggregationMethod.Average,
             (t) => age_initial + t
         );
 
-        qx = new Column("qx",
+        qx = new Column(this,
+            "qx",
             context,
             AggregationMethod.Average,
             (t) =>
@@ -71,7 +96,8 @@ public class ExampleModel : ModelBase
             }
         );
 
-        tpx = new Column("tpx",
+        tpx = new Column(this,
+            "tpx",
             context,
             AggregationMethod.Average,
             (t) =>
@@ -81,7 +107,8 @@ public class ExampleModel : ModelBase
             }
         );
 
-        discount_rate = new Column("discount_rate",
+        discount_rate = new Column(this,
+            "discount_rate",
             context,
             AggregationMethod.Average,
             (t) =>
@@ -92,7 +119,8 @@ public class ExampleModel : ModelBase
             }
         );
 
-        discount_factor = new Column("discount_factor",
+        discount_factor = new Column(this,
+            "discount_factor",
             context,
             AggregationMethod.Average,
             (t) =>
@@ -102,7 +130,8 @@ public class ExampleModel : ModelBase
             }
         );
 
-        reserve_per = new Column("reserve_per",
+        reserve_per = new Column(this,
+            "reserve_per",
             context,
             AggregationMethod.Sum,
             (t) =>
@@ -112,7 +141,8 @@ public class ExampleModel : ModelBase
             }
         );
 
-        reserve = new Column("reserve",
+        reserve = new Column(this,
+            "reserve",
             context,
             AggregationMethod.Sum,
             (t) =>

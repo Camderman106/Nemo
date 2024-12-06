@@ -1,4 +1,6 @@
-﻿using Nemo.IO;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using Nemo.IO;
+using Nemo.IO.CSV;
 using Nemo.Model.Buffers;
 using Nemo.Model.Components;
 using System.Reflection;
@@ -6,7 +8,8 @@ using System.Reflection;
 namespace Nemo.Model;
 public abstract class ModelBase
 {
-    public string Name { get; init; } = nameof(ModelBase);
+    public string Name { get; init; }
+    public string Group { get; private set; } = String.Empty;
     public string Description { get; init; } = string.Empty;
     internal int RecordIndex = 0;
     internal bool Initialised = false;
@@ -19,9 +22,14 @@ public abstract class ModelBase
     internal AggregateOutputBuffer? AggregateOutputBuffer { get; set; }
     internal IndividualOutputBuffer? IndividualOutputBuffer { get; set; }
     internal List<KeyValuePair<string, Action<string>>> DataScalarMap = new();
+
+    internal Table.ColumnIndexed? TraceTable;
+
     public ModelBase(ModelContext context)
     {
+        Name = this.GetType().Name;
         Context = context;
+        if(Context.TraceResultsTable is not null) TraceTable = Table.From(Context.Sources.Tables[Context.TraceResultsTable]).IndexByColumns(["modelclass", "group", "time"]);
 
         // Fetching all Column fields
         ColumnFields = this.GetType()
@@ -66,7 +74,7 @@ public abstract class ModelBase
     {
         if (Context.OutputSet.AggregatedOutput) //Set up aggregate buffer
         {
-            AggregateOutputBuffer = new AggregateOutputBuffer(this.GetType().Name, group);
+            AggregateOutputBuffer = new AggregateOutputBuffer(Name, group);
             for (int i = 0; i < ColumnFields.Count; i++)
             {
                 FieldInfo field = ColumnFields[i];
@@ -96,6 +104,7 @@ public abstract class ModelBase
             var scalarsToOutput = ScalarFields.Select(x => (IScalarOutputToString)x.GetValue(this)!).Where(x => x.IsOutput).Select(x => x.OutputName).ToArray()!;
             IndividualOutputBuffer = new IndividualOutputBuffer(this.GetType().Name, scalarsToOutput);
         }
+        Group = group;
         Initialised = true;
         ChildModels.ForEach(x => x.InitialiseBuffer(group));
     }

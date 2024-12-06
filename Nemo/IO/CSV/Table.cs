@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Nemo.Model;
+using System.Diagnostics;
 namespace Nemo.IO.CSV;
 public class Table
 {
@@ -204,13 +205,32 @@ public class Table
             RowStream.GetLine(out var row);
             RowParser.Parse(row);
             ColumnCount = RowParser.FieldCount;
-            string[] headers;
-            headers = RowParser.ToArray();
+            string[] headers = RowParser.ToArray();
 
             ColumnIndexMap = Enumerable.Range(0, ColumnCount).Select(x => new KeyValuePair<string, int>(headers[x], x)).ToDictionary();
             RowStream.Seek(0);
         }
         #region ColumnIndexed.Lookups
+        internal double? LookupTrace(string[] lookupColumnValues, string returnColumn)
+        {
+            StringArrayKey key = new StringArrayKey(lookupColumnValues);
+            if (OffsetMap.TryGetValue(key, out long offset))
+            {
+                RowStream.Seek(offset);
+                RowStream.GetLine(out var row);
+                RowParser.Parse(row);
+                if(!ColumnIndexMap.ContainsKey(returnColumn)) return null;
+                var index = ColumnIndexMap[returnColumn];
+                var span = RowParser.GetField(ColumnIndexMap[returnColumn]);
+                if (span.IsEmpty) return ModelBase.ZeroNoAverage;
+                return double.Parse(span);
+            }
+            else
+            {
+                throw new LookupException($"Lookup not found in {Path.GetFileNameWithoutExtension(CSVSource.OriginalPath)} with key: {key}");
+            }
+        }
+
         public string LookupString(string[] lookupColumnValues, string returnColumn)
         {
             StringArrayKey key = new StringArrayKey(lookupColumnValues);

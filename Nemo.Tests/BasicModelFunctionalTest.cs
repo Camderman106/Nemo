@@ -12,8 +12,8 @@ namespace Nemo.Tests
             internal Column column2;
             public TestClass(ModelContext context) : base(context)
             {
-                column1 = new Column("TestColumn", context, AggregationMethod.Sum, (int t) => 2 * t + 1);
-                column2 = new Column("TestColumn2", context, AggregationMethod.Sum, (int t) => column1.At(t));
+                column1 = new Column(this, "TestColumn", context, AggregationMethod.Sum, (int t) => 2 * t + 1);
+                column2 = new Column(this, "TestColumn2", context, AggregationMethod.Sum, (int t) => column1.At(t));
             }
 
         }
