@@ -3,6 +3,8 @@ using Nemo.Model;
 using Nemo.Model.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime;
+using System.Runtime.CompilerServices;
 using Table = Nemo.IO.CSV.Table;
 
 namespace Nemo;
@@ -11,7 +13,7 @@ public class Engine<TModel> where TModel : ModelBase
 {
     private int? ChunkSize = null;
     private bool MultiThreading = false;
-    private int MaxThreads = 8;
+    private int MaxThreads = 8;//Environment.ProcessorCount;
     private string? GroupBy = null;
     private Func<ModelContext, TModel> ModelFactory;
     internal ConcurrentBag<AggregateOutputBuffer> AggregateBuffers { get; private set; }
@@ -22,6 +24,8 @@ public class Engine<TModel> where TModel : ModelBase
         AggregateBuffers = new ConcurrentBag<AggregateOutputBuffer>();
         IndividualBuffers = new ConcurrentBag<IndividualOutputBuffer>();
     }
+    
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 
     public void Execute(ModelContext context)
     {
@@ -31,6 +35,7 @@ public class Engine<TModel> where TModel : ModelBase
         var records = Table.From(context.Sources.Data).AsRecords();
         ParallelOptions options = new ParallelOptions() { MaxDegreeOfParallelism = MaxThreads };
         //Setting switch
+
         switch (GroupBy is not null, ChunkSize is not null, MultiThreading)
         {
             case (false, false, false):
@@ -124,6 +129,8 @@ public class Engine<TModel> where TModel : ModelBase
         if (context.OutputSet.IndividualOutput) IndividualOutputBuffer.Export(IndividualBuffers, context);
         Console.WriteLine($"Job: {context.Name} completed in {(float)JobTimer.ElapsedMilliseconds / 1000}s");
     }
+    
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 
     public void ProcessBatch(TModel instance, IEnumerable<TableRecord> records)
     {
@@ -139,6 +146,7 @@ public class Engine<TModel> where TModel : ModelBase
                 throw new EngineException("Groupby column not found");
             }
         }
+        Console.WriteLine($"Batch start Group: '{group}', Thread: {Thread.CurrentThread.ManagedThreadId}");
         if (!instance.Initialised) instance.InitialiseBuffer(group);
         Stopwatch Odometer = Stopwatch.StartNew();
         Stopwatch BatchTimer = Stopwatch.StartNew();

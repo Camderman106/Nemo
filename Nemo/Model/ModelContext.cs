@@ -29,7 +29,7 @@ public class ModelContext
     {
         this.TraceResultsTable = "#~Reference~#";
         Sources.AddCSVSource("#~Reference~#", traceTable);
-        if (TraceResultsTable is not null) Console.WriteLine("Ensure that the trace table contains only unaggregated groups. AKA one policy per group, or the tracing will fail");
+        Console.WriteLine("Ensure that the trace table contains only unaggregated groups. AKA one policy per group, or the tracing will fail");
         Sources.ExtractSources(Path.Combine(JobDirectory, "extracted")); //need to re-extract the table. Will only affect 1 table
         return this;
     }

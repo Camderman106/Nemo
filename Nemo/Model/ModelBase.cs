@@ -3,7 +3,9 @@ using Nemo.IO;
 using Nemo.IO.CSV;
 using Nemo.Model.Buffers;
 using Nemo.Model.Components;
+using System.Numerics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Nemo.Model;
 public abstract class ModelBase
@@ -70,6 +72,7 @@ public abstract class ModelBase
         ChildModels.ForEach(x => x.InjectModelData(record));
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     internal void InitialiseBuffer(string group)
     {
         if (Context.OutputSet.AggregatedOutput) //Set up aggregate buffer
@@ -119,11 +122,14 @@ public abstract class ModelBase
             }
         }
     }
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 
     internal void OutputToBuffer()
     {
         if (AggregateOutputBuffer is not null)
         {
+            int t_start = Context.Projection.T_Start; //force local to avoid duplicate reference following
+            int t_end = Context.Projection.T_End;
             for (int i = 0; i < ColumnFields.Count; i++)
             {
                 FieldInfo field = ColumnFields[i];
@@ -132,7 +138,7 @@ public abstract class ModelBase
                 {
                     AggregateColumnBuffer columnBuffer = AggregateOutputBuffer.ColumnBuffers[i]!;
                     var span = column.TrimForExport(Context.Projection.T_Start, Context.Projection.T_End - Context.Projection.T_Start + 1);
-                    for (int t = Context.Projection.T_Start; t <= Context.Projection.T_End; t++)
+                    for (int t = t_start; t <= t_end; t++)
                     {
                         if (span[t].State == ColumnValueState.Calculated)
                         {

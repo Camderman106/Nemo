@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -21,6 +22,7 @@ public class ComputedTable : IModelComponent
         Values = new double?[colunms, rows];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public double At(int col, int row)
     {
         if (Values[col, row].HasValue)

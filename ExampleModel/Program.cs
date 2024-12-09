@@ -1,5 +1,4 @@
-﻿using DocumentFormat.OpenXml.Bibliography;
-using Nemo;
+﻿using Nemo;
 using Nemo.IO;
 using Nemo.Model;
 using Nemo.Model.Components;
@@ -13,7 +12,7 @@ public class ExampleModel : ModelBase
         var job = new ModelContext(
             "Example10k",
             Directory.GetCurrentDirectory(),
-            new Projection(0, 0, 120, 120),
+            new Projection(0, 0, 1200, 1200),
             new OutputSet(),
             new SourceManager()
             .SetDataSource("Inputs\\ExampleData10k.csv")
@@ -45,7 +44,11 @@ public class ExampleModel : ModelBase
         //    )
         //    .SetTraceTable("ExampleReference-ExampleModel.csv");
 
-        var engine = new Engine<ExampleModel>((x) => new ExampleModel(x)).GroupRecordsBy("GROUP");
+        var engine = new Engine<ExampleModel>((x) => new ExampleModel(x))
+            .GroupRecordsBy("GROUP")
+            .UseMultiThreading(true)
+            .UseChunkSize(500)
+            ;
         engine.Execute(job);
     }
 
@@ -61,6 +64,10 @@ public class ExampleModel : ModelBase
     Column discount_factor;
     Column reserve_per;
     Column reserve;
+
+    SharedColumn AMC00_qx;
+    SharedColumn AFC00_qx;
+    SharedColumn discount_shared;
 
     Table.ColumnIndexed AMC00;
     Table.ColumnIndexed AFC00;
@@ -78,6 +85,9 @@ public class ExampleModel : ModelBase
             (t) => age_initial + t
         );
 
+        AMC00_qx = new SharedColumn("shared_qx_m", context, (t) => AMC00.LookupDouble([(t).ToString()], "Durations 2+", () => 1));
+        AFC00_qx = new SharedColumn("shared_qx_f", context, (t) => AFC00.LookupDouble([(t).ToString()], "Durations 2+", () => 1));
+
         qx = new Column(this,
             "qx",
             context,
@@ -86,10 +96,12 @@ public class ExampleModel : ModelBase
             {
                 if(sex == 0)
                 {
+                    return AMC00_qx.At(Math.Min((int)age.At(t), context.Projection.T_Max));
                     return AMC00.LookupDouble([((int)age.At(t)).ToString()], "Durations 2+", () => 1);
                 }
                 else
                 {
+                    return AFC00_qx.At(Math.Min((int)age.At(t), context.Projection.T_Max));
                     return AFC00.LookupDouble([((int)age.At(t)).ToString()], "Durations 2+", () => 1);
 
                 }
@@ -107,12 +119,19 @@ public class ExampleModel : ModelBase
             }
         );
 
+        discount_shared = new SharedColumn("shared_discount", context, (t) =>
+        {
+            if (t == 0) return 1;
+            return Spots.LookupDouble([((int)t).ToString()], "Spot",
+                () => Spots.LookupDouble([((int)40).ToString()], "Spot")) / 100;
+        });
         discount_rate = new Column(this,
             "discount_rate",
             context,
             AggregationMethod.Average,
             (t) =>
             {
+                return discount_shared.At(t);
                 if (t == 0) return 1;
                 return Spots.LookupDouble([((int)t).ToString()], "Spot", 
                     () => Spots.LookupDouble([((int)40).ToString()], "Spot")) /100;

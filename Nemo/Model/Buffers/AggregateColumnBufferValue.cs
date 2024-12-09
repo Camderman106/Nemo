@@ -7,5 +7,4 @@ internal struct AggregateColumnBufferValue
 {
     internal double Sum;
     internal uint Count;
-
 }

@@ -29,6 +29,7 @@ public class CsvRowParser : IDisposable
     {
         STRICT
     }
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private void ParseStrict(ReadOnlySpan<char> inputRow)
     {
         int charsLength = inputRow.Length > 0 ? inputRow.Length : 64;
