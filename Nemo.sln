@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nemo", "Nemo\Nemo.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nemo.Tests", "Nemo.Tests\Nemo.Tests.csproj", "{21A570B7-5AA4-4F76-848D-2BCD284BBCBF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerformanceTest", "PerformanceTest\PerformanceTest.csproj", "{6396C048-394D-469E-9608-5EDAA50FDDA7}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleModel", "ExampleModel\ExampleModel.csproj", "{AAC0A454-D4E9-4033-9445-E13CDA39D528}"
 EndProject
 Global
@@ -25,10 +23,6 @@ Global
 		{21A570B7-5AA4-4F76-848D-2BCD284BBCBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{21A570B7-5AA4-4F76-848D-2BCD284BBCBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{21A570B7-5AA4-4F76-848D-2BCD284BBCBF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6396C048-394D-469E-9608-5EDAA50FDDA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6396C048-394D-469E-9608-5EDAA50FDDA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6396C048-394D-469E-9608-5EDAA50FDDA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6396C048-394D-469E-9608-5EDAA50FDDA7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{AAC0A454-D4E9-4033-9445-E13CDA39D528}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{AAC0A454-D4E9-4033-9445-E13CDA39D528}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AAC0A454-D4E9-4033-9445-E13CDA39D528}.Release|Any CPU.ActiveCfg = Release|Any CPU

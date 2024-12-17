@@ -54,6 +54,7 @@ public class Table
             {
                 RowStream.Seek(offset);
                 RowStream.GetLine(out var row);
+                RowParser.Parse(row);
                 return RowParser.GetField(ColumnIndexMap[returnColumn]).ToString();
             }
             else
@@ -220,7 +221,6 @@ public class Table
                 RowStream.GetLine(out var row);
                 RowParser.Parse(row);
                 if(!ColumnIndexMap.ContainsKey(returnColumn)) return null;
-                var index = ColumnIndexMap[returnColumn];
                 var span = RowParser.GetField(ColumnIndexMap[returnColumn]);
                 if (span.IsEmpty) return ModelBase.ZeroNoAverage;
                 return double.Parse(span);
@@ -433,7 +433,6 @@ public class Table
     #region CreateIndexes
     internal IReadOnlyDictionary<StringArrayKey, long> CreateIndexByColumns(string[] columnHeadersToIndex)
     {
-        bool DetectedDuplicateKeys = false;
         Dictionary<StringArrayKey, long> RowPositions = new();
         using CsvRowStream rowStream = new CsvRowStream(CSVSource);
         using CsvRowParser rowParser = new CsvRowParser(validateRows: true);
@@ -457,7 +456,6 @@ public class Table
     }
     internal IReadOnlyDictionary<StringArrayKey, long> CreateIndexByColumns(int[] columnIndexesToIndex, bool hasHeader = true)
     {
-        bool DetectedDuplicateKeys = false;
         Dictionary<StringArrayKey, long> RowPositions = new();
         using CsvRowStream rowStream = new CsvRowStream(CSVSource);
         using CsvRowParser rowParser = new CsvRowParser(validateRows: true);
@@ -545,7 +543,7 @@ public class Table
     /// <summary>
     /// A wrapper for an int that enables the column Indexes to be indexed from 1. Literally just subtracts 1 from the index on construction
     /// </summary>
-    public struct ColumnIndex
+    public readonly struct ColumnIndex
     {
         private readonly int _index;
         private ColumnIndex(int index)

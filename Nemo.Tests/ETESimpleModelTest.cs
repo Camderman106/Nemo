@@ -112,8 +112,7 @@ namespace Nemo.Tests
                 .AddCSVSource("YieldCurve", "2023Q3YieldCurve.csv")
                 .SetDataSource("FakeDataWithGroup.csv");
             Projection projection = new Projection(0, 0, 1200, 1200);
-            OutputSet outputSet = new OutputSet();
-            ModelContext job = new ModelContext("test", Directory.GetCurrentDirectory(),  projection, outputSet, sources);
+            ModelContext job = new ModelContext("test", Directory.GetCurrentDirectory(),  projection, OutputSet.Default(), sources);
 
             Engine<SimpleExampleModel> engine = new Engine<SimpleExampleModel>((job) => new SimpleExampleModel(job));
             engine.Execute(job);
@@ -128,9 +127,8 @@ namespace Nemo.Tests
                 .AddCSVSource("YieldCurve", "2023Q3YieldCurve.csv")
                 .SetDataSource("FakeDataWithGroup.csv");
             Projection projection = new Projection(0, 0, 1200, 1200);
-            OutputSet outputSet = new OutputSet();
 
-            ModelContext job2 = new ModelContext("test2", Directory.GetCurrentDirectory(), projection, outputSet, sources);
+            ModelContext job2 = new ModelContext("test2", Directory.GetCurrentDirectory(), projection, OutputSet.Default(), sources);
             var engine = new Engine<SimpleExampleModel>((job2) => new SimpleExampleModel(job2));
             engine.GroupRecordsBy("GROUP");
             engine.Execute(job2);
@@ -142,9 +140,8 @@ namespace Nemo.Tests
                 .AddCSVSource("YieldCurve", "2023Q3YieldCurve.csv")
                 .SetDataSource("FakeDataWithGroup.csv");
             Projection projection = new Projection(0, 0, 1200, 1200);
-            OutputSet outputSet = new OutputSet();
 
-            ModelContext job3 = new ModelContext("test3", Directory.GetCurrentDirectory(), projection, outputSet, sources);
+            ModelContext job3 = new ModelContext("test3", Directory.GetCurrentDirectory(), projection, OutputSet.Default(), sources);
             var engine = new Engine<SimpleExampleModel>((job2) => new SimpleExampleModel(job3));
             engine.GroupRecordsBy("GROUP");
             engine.Execute(job3);

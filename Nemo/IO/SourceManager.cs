@@ -11,7 +11,7 @@ public class SourceManager
     public SourceManager SetDataSource(string csvFilePath)
     {
         csvFilePath = Path.GetFullPath(csvFilePath);
-        if (csvFilePath is null) throw new ArgumentNullException(nameof(csvFilePath));
+        ArgumentNullException.ThrowIfNull(csvFilePath);
         if (!Path.Exists(csvFilePath)) throw new FileNotFoundException(csvFilePath);
 
         DataSource = csvFilePath;
@@ -21,9 +21,9 @@ public class SourceManager
     public SourceManager AddCSVSource(string sourceNameId, string csvFilePath)
     {
         csvFilePath = Path.GetFullPath(csvFilePath);
-        if (sourceNameId is null ) throw new ArgumentNullException(nameof(sourceNameId));
-        if(csvFilePath is null ) throw new ArgumentNullException(nameof(csvFilePath));
-        if(!Path.Exists(csvFilePath)) throw new FileNotFoundException(csvFilePath);
+        ArgumentNullException.ThrowIfNull(sourceNameId);
+        ArgumentNullException.ThrowIfNull(csvFilePath);
+        if (!Path.Exists(csvFilePath)) throw new FileNotFoundException(csvFilePath);
 
         CsvSourceData.Add(sourceNameId, csvFilePath);
         return this;
@@ -31,8 +31,8 @@ public class SourceManager
 
     public SourceManager AddCSVSource(string sourceNameId, CSVSource csvSource)
     {
-        if (sourceNameId is null) throw new ArgumentNullException(nameof(sourceNameId));
-        if (csvSource is null) throw new ArgumentNullException(nameof(csvSource));
+        ArgumentNullException.ThrowIfNull(sourceNameId);
+        ArgumentNullException.ThrowIfNull(csvSource);
         if (!Path.Exists(csvSource.FilePath)) throw new FileNotFoundException(csvSource.FilePath);
 
         CsvSourceData.Add(sourceNameId, csvSource.FilePath);
@@ -43,10 +43,10 @@ public class SourceManager
     public SourceManager AddExcelSource(string sourceNameId, string workbookPath, string? tabName = null, string? range = null)
     {
         workbookPath = Path.GetFullPath(workbookPath);
-        if (sourceNameId is null) throw new ArgumentNullException(nameof(sourceNameId));
-        if (workbookPath is null) throw new ArgumentNullException(nameof(workbookPath));
+        ArgumentNullException.ThrowIfNull(sourceNameId);
+        ArgumentNullException.ThrowIfNull(workbookPath);
         if (!Path.Exists(workbookPath)) throw new FileNotFoundException(workbookPath);
-        if(tabName is null && range is null) throw new ArgumentNullException("Must specifiy at least one of 'sheet name' and 'range'");
+        if(tabName is null && range is null) throw new ArgumentNullException("Must specifiy at least one of 'tabName' and 'range'");
 
         ExcelSourceData[sourceNameId] = new ExcelRangeData(workbookPath, tabName, range);
         return this;
@@ -112,7 +112,7 @@ public class SourceManager
                             }
                             else
                             {
-                                Console.WriteLine($"Named range not found. {range.ToString()}");
+                                Console.WriteLine($"Named range not found. {range}");
                                 continue;
                             }
                         }
@@ -135,7 +135,7 @@ public class SourceManager
         }
         Tables = result;
     }
-    private void ExtractWorksheetToCsv(IXLWorksheet worksheet, string outputFile)
+    private static void ExtractWorksheetToCsv(IXLWorksheet worksheet, string outputFile)
     {
         // Prepare the CSV writer using Sep
         using (var writer = Sep.New(',').Writer(o => o with { WriteHeader = false }).ToFile(outputFile))
@@ -153,7 +153,7 @@ public class SourceManager
         }
     }
 
-    private void ExtractRangeToCsv(IXLRange range, string outputFile)
+    private static void ExtractRangeToCsv(IXLRange range, string outputFile)
     {
         // Prepare the CSV writer using Sep
         using (var writer = Sep.New(',').Writer(o => o with { WriteHeader = false }).ToFile(outputFile))
@@ -171,7 +171,7 @@ public class SourceManager
         }
     }
 
-    private string GetCellValueAsString(IXLCell cell)
+    private static string GetCellValueAsString(IXLCell cell)
     {
         if (cell == null || cell.IsEmpty())
             return "";

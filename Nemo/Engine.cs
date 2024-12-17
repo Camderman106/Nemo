@@ -1,4 +1,5 @@
-﻿using Nemo.IO;
+﻿using DocumentFormat.OpenXml.Drawing;
+using Nemo.IO;
 using Nemo.Model;
 using Nemo.Model.Buffers;
 using System.Collections.Concurrent;
@@ -26,7 +27,6 @@ public class Engine<TModel> where TModel : ModelBase
     }
     
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-
     public void Execute(ModelContext context)
     {
         Stopwatch JobTimer = Stopwatch.StartNew();
@@ -131,7 +131,6 @@ public class Engine<TModel> where TModel : ModelBase
     }
     
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-
     public void ProcessBatch(TModel instance, IEnumerable<TableRecord> records)
     {
         string group = "";
@@ -151,14 +150,17 @@ public class Engine<TModel> where TModel : ModelBase
         Stopwatch Odometer = Stopwatch.StartNew();
         Stopwatch BatchTimer = Stopwatch.StartNew();
         int BatchCount = 0;
+        instance.OnBatchStart();
         foreach (var record in records)
         {
             #if DEBUG            
                 instance.RecordIndex = record.Index - 1;
                 instance.InjectModelData(record);
                 instance.OnNextRecord();
-                instance.Target();
-                instance.OutputToBuffer();            
+                instance.Target();                
+                instance.OutputToBuffer();
+                instance.OnRecordOutput();
+                       
             
                 BatchCount++;
                 if (BatchCount % 100 == 0)
@@ -175,13 +177,22 @@ public class Engine<TModel> where TModel : ModelBase
                 instance.RecordIndex = record.Index -1;
                 instance.InjectModelData(record);
                 instance.OnNextRecord();
-                instance.Target();
+                instance.Target();                
                 instance.OutputToBuffer();
+                instance.OnRecordOutput();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Model point skipped: {instance.RecordIndex}");
                 Console.WriteLine($"{ex.Message}");
+                try
+                {
+                    instance.OnRecordSkip();
+                }
+                catch (Exception ex2)
+                {
+                    Console.WriteLine($"Another error occured during the OnRecordSkip event. {ex2.Message}");
+                }
             }
             finally
             {
@@ -192,10 +203,12 @@ public class Engine<TModel> where TModel : ModelBase
                     Odometer.Restart();
                 }
                 instance.Reset();
+                instance.OnReset();
             }
-            #endif
+#endif
 
         }
+        instance.OnBatchEnd();
         if (instance.AggregateOutputBuffer is not null)
             AggregateBuffers.Add(instance.AggregateOutputBuffer);
         if (instance.IndividualOutputBuffer is not null)

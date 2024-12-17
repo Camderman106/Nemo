@@ -7,17 +7,16 @@ namespace Nemo.IO.CSV;
 
 public class CsvRowStream : IDisposable
 {
-    private Stream stream;
-    private byte[] bytes;
+    private readonly Stream stream;
+    private readonly byte[] bytes;
     private char[] chars;
     private int charPos = 0;
     private int charLen = 0;
     private long byteChunkBeginPosition = 0;
     private long byteChunkEndPosition = 0;
-    private Encoding encoding;
-    private Decoder decoder;
+    private readonly Encoding encoding;
+    private readonly Decoder decoder;
     private const int InitialBufferSize = 1024;
-    private int byteBufferStartOffset = 0;
     private static readonly Encoding DefaultEncoding = new UTF8Encoding(false);
     //public long EndLineByteOffsetInclusive { get; private set; } = 0;
 

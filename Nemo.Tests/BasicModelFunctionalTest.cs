@@ -22,7 +22,7 @@ namespace Nemo.Tests
         public void TestSimpleClass()
         {
             Projection proj = new Projection(0,0,1,1);
-            ModelContext job = new ModelContext("", "", proj, new(), new SourceManager());
+            ModelContext job = new ModelContext("", "", proj, OutputSet.Default(), new SourceManager());
             TestClass testClass = new TestClass(job);
             testClass.InitialiseBuffer("testgroup");
             Assert.IsFalse(testClass.column2.IsCalculatedAt(0));

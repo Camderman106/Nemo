@@ -105,7 +105,7 @@ public class Scalar<T> : ScalarBase, IScalarOutputToString, IModelComponent wher
         _calculated = false;
     }
 
-    private T GetDefaultValue()
+    private static T GetDefaultValue()
     {
         if (typeof(T) == typeof(string))
         {

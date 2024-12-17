@@ -51,12 +51,8 @@ public abstract class ModelBase
     {
         DataScalarMap.Add(new KeyValuePair<string, Action<string>>(dataField, (dataValue) => scalar.SetValue(converter(dataValue))));
     }
-    public virtual void OnNextRecord()
-    {
-
-    }
-
-    public void InjectModelData(TableRecord record)
+    
+    internal void InjectModelData(TableRecord record)
     {
         foreach (var field in DataScalarMap)
         {
@@ -172,4 +168,12 @@ public abstract class ModelBase
         }
         ChildModels.ForEach(x => x.Reset());
     }
+
+    //events that derived models can hook into for additional functionality
+    public virtual void OnBatchStart() { }
+    public virtual void OnBatchEnd() { }
+    public virtual void OnNextRecord() { }
+    public virtual void OnReset() { }
+    public virtual void OnRecordOutput() { }
+    public virtual void OnRecordSkip() { }
 }
