@@ -108,7 +108,8 @@ public abstract class ModelBase
         ChildModels.ForEach(x => x.InitialiseBuffer(group));
     }
     public virtual void Target()
-    {
+    {        
+        ChildModels.ForEach(x => x.Target()); //Force child calculations first
         foreach (var columnField in ColumnFields)
         {
             Column column = (Column)columnField.GetValue(this)!;
@@ -118,8 +119,8 @@ public abstract class ModelBase
             }
         }
     }
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
 
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     internal void OutputToBuffer()
     {
         if (AggregateOutputBuffer is not null)
