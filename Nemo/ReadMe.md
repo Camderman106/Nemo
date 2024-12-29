@@ -1,7 +1,7 @@
 ﻿# Nemo Financial Modelling Framework
 This is a project that I built for myself in order to learn about how financial modelling tools work, specifically in the context of life insurance. 
 
-Modelling software packages in this world are generally based on Columns and Scalars. And project cashflows, risks, and other business metrics into the future. 
+Modelling software packages in this world are generally based on Columns and Scalars. They project cashflows, risks, and other business metrics into the future. 
 
 They are used for SII reporting, reserving, scenario stress testing, IFRS17 reporting and more. However they are general purpose so they can be used for almsot anything
 
@@ -62,7 +62,7 @@ ModelBase is a base class that lets the model interact with the engine. It also 
 - Handles copying data from the columns and scalars into the output buffer at the end of each record's caclculations
 - Provides a handful of virtual methods which are invoked at specific points in the calculation loop to enable custom behaviour
 
-Your model class can then do whatever the hell you want it to do. But the intention by default is that you would add a series of columns and scalars to your class to perform your projections
+Your model class can then do whatever the hell you want it to do. If you want it to run pacman you can. But the intention by default is that you would add a series of columns and scalars to your class to perform your projections
 
 For further details read the source code for this class, and see how the API works by viewing the ExampleModel
 
