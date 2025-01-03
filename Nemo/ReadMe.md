@@ -31,7 +31,7 @@ You are free to play with, edit, modify, customise, break, import, export, and i
 This software doesnt have a UI. It doesnt need one. Visual Studio or Rider is the best interface you could ever have for building and debugging financial models. Attempting to build a UI to replace is a huge overhead, an enormous source of complexity, and an additional layer of obfuscation that you just don't need. 
 If you want to build an interface as part of your particular model, you are completely free to do so. But that is a model level feature, not a framework level feature
 
-And lastly, modelling is programming. To be able to model you must be able to program. If, as a software provider, your value proposition to a customer is that your software lets people model without understanding what they are doing, then you have failed before you have even started. And you should probably not designing software at all. 
+And lastly, modelling is programming. To be able to model you must be able to program. If, as a software provider, your value proposition to a customer is that your software lets people model without understanding what they are doing, then you have failed before you have even started. And you should probably not be designing software at all. 
 
 That doesnt mean every user needs to understanding everything about it, but it does mean that at least someone on your staff needs to. 
 
