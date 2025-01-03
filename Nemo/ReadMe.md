@@ -3,14 +3,14 @@ This is a project that I built for myself in order to learn about how financial 
 
 Modelling software packages in this world are generally based on Columns and Scalars. They project cashflows, risks, and other business metrics into the future. 
 
-They are used for SII reporting, reserving, scenario stress testing, IFRS17 reporting and more. However they are general purpose so they can be used for almsot anything
+They are used for SII reporting, reserving, scenario stress testing, IFRS17 reporting and more. However they are general purpose so they can be used for almost anything
 
 Some similar software packages include
  - WTW: RiskAgilityFM
  - FIS: Prophet
  - Milliman: MG ALFA
 
-This software is intended to perform a similar function to the above, but with a simplifed feature set. It may also function as a learning aid, for those looking to understand how these calculations are done in other software under the hood. It will most closely resemble RiskAgility FM (as that is the one I am most familiar with), but will have similarities with all of those software packages.
+This software is intended to perform a similar function to the above but with a simplifed feature set. It may also function as a learning aid for those looking to understand how these calculations work in other software under the hood. It will most closely resemble RiskAgility FM (as that is the one I am most familiar with), but will have similarities with all of those software packages.
 
 If you wish to use this in production, you do so at your own risk. This software has not been independently tested, audited or validated. (as of 29/12/2024)
 
@@ -28,10 +28,11 @@ This  comes at the cost of functionality to the actual users of the software. Ma
 There is also a great deal of care taken to make it as difficult as humanly possible to export your model or customise its behaviour. This is done so they can make it expensive and time consuming to switch and helps them 'lock in' their customer base, or to reduce support tickets. But to me this is scumbag behaviour and I won't have it on anything I build. My design philosphy here is the precise oposite of that. 
 You are free to play with, edit, modify, customise, break, import, export, and integrate things however you wish. Note that support options are also virtually non-existent. But the project is simple enough that that shouldnt be a problem for a competent user
 
-This software doesnt have a UI. It doesnt need one. Visual Studio or Rider is the best interface you could ever have for building and debugging fnancial models. Attempting to build a UI to replace is a huge overhead, an enormous source of complexity, and an additional layer of obfuscation that you just don't need. 
+This software doesnt have a UI. It doesnt need one. Visual Studio or Rider is the best interface you could ever have for building and debugging financial models. Attempting to build a UI to replace is a huge overhead, an enormous source of complexity, and an additional layer of obfuscation that you just don't need. 
 If you want to build an interface as part of your particular model, you are completely free to do so. But that is a model level feature, not a framework level feature
 
 And lastly, modelling is programming. To be able to model you must be able to program. If, as a software provider, your value proposition to a customer is that your software lets people model without understanding what they are doing, then you have failed before you have even started. And you should probably not designing software at all. 
+
 That doesnt mean every user needs to understanding everything about it, but it does mean that at least someone on your staff needs to. 
 
 Trying to avoid this will lead to slow, expensive, inflexible, unreadable, unmaintainable and and generally inefficient models and there is no magic solution to this despite what all the software providers may promise you. They are all wrong. Yes all of them
@@ -54,7 +55,7 @@ Lets take a look at the Example Model. Before we continue, I know that the calcu
 To define a new model, we need to create a new class which inherits from Nemo.Model.ModelBase
 
 ### ModelBase
-ModelBase is a base class that lets the model interact with the engine. It also handles a lot of boiler plate for you and do some setup with the inbuilt output buffer systems
+ModelBase is a base class that lets the model interact with the engine. It also handles a lot of boiler plate for you and does some setup with the inbuilt output buffer systems
 
 - Provides a way for you to map fields from your input file to scalars in the model. MapDataToScalar
 - Provides a virtual default Target implimentation that uses reflection to identify all of your model columns at runtime, and calculate all of them
@@ -67,7 +68,7 @@ Your model class can then do whatever the hell you want it to do. If you want it
 For further details read the source code for this class, and see how the API works by viewing the ExampleModel
 
 ### Columns
-A column is essentially a wrapper around a function, and a buffer of results which act to CACHE the values for a calculation. the cache is only cleared when the model is reset, and that happens when the current input record changes.
+A column is essentially a wrapper around a function and a buffer of results which act to cache the values for a calculation. The cache is only cleared when the model is reset, and that happens when the current input record changes.
 
 So column values are calculated only once <b>per time period, per policy</b>
 
@@ -123,9 +124,9 @@ You can change this by overriding the Target() method in your Model class
 This is a little container for holding information about what will be output by the model
 
 At present its just a list of Column and Scalar OutputNames. You can use the special case values "Scalars.All" or "Columns.All" to include everything. This is also the default behaviour.
-I might add time filters in future but for now i havent bothered.
+I might add time filters in future but for now I haven't bothered.
 
-I decided to keep things simple and permit only columns in the aggregate output and Scalars only in the Individual output. Other software packages might provide a way of mixing and matchning but i dont believe this is necesary. If you want to include a column in the individual output, add a scalar to act as an interface, and have it simply read the column value you are interested in
+I decided to keep things simple and permit only columns in the aggregate output and Scalars only in the Individual output. Other software packages might provide a way of mixing and matching but I dont believe this is strictly necesary. If you want to include a column in the individual output, add a scalar to act as an interface, and have it simply read the column value you are interested in
 
 ### Model Context
 
@@ -142,9 +143,9 @@ This class is best understood by reading the source code directly.
 Examples for how to use the API for the engine can be found in the ExampleModel class
 
 ### Other
-There aree loads of things thise readme doesnt cover. Like this source manager, or the csv reader.  These are complicated and i havent yet written any documntaion for them but i will get there eventually. Feel free to read the source to understand more
+There are loads of things thise readme doesnt cover. Like this source manager, or the csv reader.  These are complicated and I havent yet written any documntaion for them but i will get there eventually. Feel free to read the source to understand more
 
-There are also scalars, shared columns, or the Table class and its lookups. These arent that complicated and im sure you can infer what you need from the source or the example model
+There are also scalars, shared columns, or the 'Table' class and its lookups. These arent that complicated and im sure you can infer what you need from the source or the example model
 
 ### Contributions
 
